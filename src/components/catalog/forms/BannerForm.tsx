@@ -372,6 +372,9 @@ export default function BannerForm({
                 <option value="HOME_HERO">হোম পেজের উপরে</option>
                 <option value="SHOP_HERO">শপ পেজের উপরে</option>
                 <option value="GUIDE_HERO">গাইড পেজের উপরে</option>
+                <option value="SOLUTION_GUIDE">
+                  হোম পেজের Solution Guide section
+                </option>
               </select>
             </Field>
           </TwoColumns>

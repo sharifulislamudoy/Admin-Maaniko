@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
 
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
@@ -24,12 +23,7 @@ type AdminShellProps = {
 };
 
 export default function AdminShell({ children, user }: AdminShellProps) {
-  const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  useEffect(() => {
-    setIsDrawerOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -52,12 +46,12 @@ export default function AdminShell({ children, user }: AdminShellProps) {
   }, [isDrawerOpen]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] xl:grid xl:grid-cols-4">
-      <aside className="hidden xl:block">
+    <div className="min-h-screen bg-[#f8fafc] xl:grid xl:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="hidden xl:sticky xl:top-0 xl:block xl:h-screen xl:overflow-hidden">
         <AdminSidebar role={user.role} />
       </aside>
 
-      <div className="min-w-0 xl:col-span-3">
+      <div className="min-w-0">
         <AdminHeader user={user} onOpenMenu={() => setIsDrawerOpen(true)} />
 
         <main className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">

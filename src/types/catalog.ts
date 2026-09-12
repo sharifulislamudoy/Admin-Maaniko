@@ -95,7 +95,11 @@ export type ComboPayload = {
 
 export type BannerPayload = {
   key: string;
-  placement: "HOME_HERO" | "SHOP_HERO" | "GUIDE_HERO";
+  placement:
+    | "HOME_HERO"
+    | "SHOP_HERO"
+    | "GUIDE_HERO"
+    | "SOLUTION_GUIDE";
   desktopImage: string;
   mobileImage: string;
   publicId?: string;

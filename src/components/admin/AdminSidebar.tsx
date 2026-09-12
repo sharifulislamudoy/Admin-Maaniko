@@ -26,7 +26,7 @@ export default function AdminSidebar({
   );
 
   return (
-    <aside className="flex h-full flex-col bg-[#062a54] px-4 py-5 text-white">
+    <aside className="flex h-full min-h-0 flex-col bg-[#062a54] px-4 py-5 text-white">
       <div className="flex items-center gap-3 px-2 pb-6">
         <span className="grid size-11 place-items-center rounded-2xl bg-white/10 text-[#52c7f5]">
           <ShieldCheck className="size-6" />
@@ -41,7 +41,7 @@ export default function AdminSidebar({
       <p className="px-3 pb-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">
         {t("admin.navigation.menu")}
       </p>
-      <nav className="space-y-1.5">
+      <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.22)_transparent]">
         {items.map((item) => {
           const active =
             item.href === "/"
@@ -63,7 +63,7 @@ export default function AdminSidebar({
           );
         })}
       </nav>
-      <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-white/60">
+      <div className="mt-4 shrink-0 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-white/60">
         <p className="font-extrabold text-white">Google সুরক্ষিত</p>
         <p className="mt-1">NestJS JWT ও রোলভিত্তিক অ্যাক্সেস</p>
       </div>
