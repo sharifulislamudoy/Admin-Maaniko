@@ -53,6 +53,14 @@ type Order = {
   area?: string | null;
   city?: string | null;
   note?: string | null;
+  alternativePhone?: string | null;
+  deliveryType: 0 | 1;
+  steadfastConsignmentId?: string | null;
+  steadfastTrackingCode?: string | null;
+  steadfastStatus?: string | null;
+  steadfastSubmittedAt?: string | null;
+  steadfastLastSyncedAt?: string | null;
+  steadfastError?: string | null;
   subtotal: number;
   deliveryCharge: number;
   total: number;
@@ -181,10 +189,9 @@ export default function OrdersManager() {
       if (status) query.set("status", status);
       if (search) query.set("search", search);
 
-      const result = await fetch(
-        "/api/commerce/orders?" + query.toString(),
-        { cache: "no-store" },
-      );
+      const result = await fetch("/api/commerce/orders?" + query.toString(), {
+        cache: "no-store",
+      });
       const body = (await result.json()) as OrderResponse & {
         message?: string;
       };
@@ -193,9 +200,7 @@ export default function OrdersManager() {
       setResponse(body);
       setSelected(new Set());
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Order load failed",
-      );
+      setError(reason instanceof Error ? reason.message : "Order load failed");
     } finally {
       setLoading(false);
     }
@@ -212,9 +217,7 @@ export default function OrdersManager() {
 
     try {
       const result = await fetch(
-        "/api/commerce/orders/" +
-          encodeURIComponent(orderId) +
-          "/status",
+        "/api/commerce/orders/" + encodeURIComponent(orderId) + "/status",
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -232,6 +235,46 @@ export default function OrdersManager() {
       await load();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Update failed");
+      await load();
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function syncOne(orderId: string) {
+    setBusy(orderId);
+    setError("");
+    try {
+      const result = await fetch(
+        `/api/commerce/orders/${encodeURIComponent(orderId)}/steadfast/sync`,
+        { method: "POST" },
+      );
+      const body = (await result.json()) as { message?: string };
+      if (!result.ok) throw new Error(body.message ?? "Steadfast sync failed");
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Steadfast sync failed",
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function syncAll() {
+    setBusy("ALL");
+    setError("");
+    try {
+      const result = await fetch("/api/commerce/orders/steadfast/sync", {
+        method: "POST",
+      });
+      const body = (await result.json()) as { message?: string };
+      if (!result.ok) throw new Error(body.message ?? "Steadfast sync failed");
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Steadfast sync failed",
+      );
     } finally {
       setBusy("");
     }
@@ -283,7 +326,7 @@ export default function OrdersManager() {
             </p>
           </div>
 
-          <div className="flex w-full gap-2 lg:max-w-md">
+          <div className="flex w-full gap-2 lg:max-w-xl">
             <label className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -303,6 +346,17 @@ export default function OrdersManager() {
                 className={"size-4 " + (loading ? "animate-spin" : "")}
               />
             </button>
+            <button
+              type="button"
+              disabled={busy === "ALL"}
+              onClick={() => void syncAll()}
+              className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#062a54] px-4 text-xs font-black text-white disabled:opacity-50"
+            >
+              <RefreshCcw
+                className={"size-4 " + (busy === "ALL" ? "animate-spin" : "")}
+              />
+              Steadfast Sync
+            </button>
           </div>
         </div>
       </header>
@@ -314,8 +368,8 @@ export default function OrdersManager() {
               const active = status === item;
               const label = item ? STATUS_LABEL[item] : "All";
               const count = item
-                ? response.meta.counts[item] ?? 0
-                : response.meta.counts.ALL ?? 0;
+                ? (response.meta.counts[item] ?? 0)
+                : (response.meta.counts.ALL ?? 0);
 
               return (
                 <button
@@ -370,7 +424,7 @@ export default function OrdersManager() {
             </div>
           )}
 
-          <table className="w-full min-w-[1380px] border-collapse text-left text-xs">
+          <table className="w-full min-w-[1530px] border-collapse text-left text-xs">
             <thead className="bg-[#3766ad] text-white">
               <tr>
                 <th className="w-10 px-3 py-3">
@@ -391,6 +445,7 @@ export default function OrdersManager() {
                 <th className="px-3 py-3">Paid</th>
                 <th className="px-3 py-3">Due</th>
                 <th className="px-3 py-3">Purchase Method</th>
+                <th className="px-3 py-3">Courier</th>
                 <th className="px-3 py-3">Status</th>
               </tr>
             </thead>
@@ -410,12 +465,9 @@ export default function OrdersManager() {
                     nextStatuses={nextStatuses}
                     busy={busy === order.id}
                     onToggle={() => toggleOne(order.id)}
-                    onExpand={() =>
-                      setExpanded(isExpanded ? "" : order.id)
-                    }
-                    onUpdate={(nextStatus) =>
-                      void update(order.id, nextStatus)
-                    }
+                    onExpand={() => setExpanded(isExpanded ? "" : order.id)}
+                    onUpdate={(nextStatus) => void update(order.id, nextStatus)}
+                    onSync={() => void syncOne(order.id)}
                   />
                 );
               })}
@@ -423,7 +475,7 @@ export default function OrdersManager() {
               {!loading && orders.length === 0 && (
                 <tr>
                   <td
-                    colSpan={11}
+                    colSpan={12}
                     className="px-4 py-16 text-center text-sm text-slate-500"
                   >
                     কোনো order পাওয়া যায়নি।
@@ -489,6 +541,7 @@ function OrderRows({
   onToggle,
   onExpand,
   onUpdate,
+  onSync,
 }: {
   order: Order;
   index: number;
@@ -499,6 +552,7 @@ function OrderRows({
   onToggle: () => void;
   onExpand: () => void;
   onUpdate: (status: OrderStatus) => void;
+  onSync: () => void;
 }) {
   return (
     <>
@@ -536,12 +590,15 @@ function OrderRows({
                 className="h-9 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 font-bold text-slate-700 outline-none disabled:bg-slate-100 disabled:text-slate-400"
                 aria-label="Order status পরিবর্তন করুন"
               >
-                <option value="">
-                  {busy ? "Updating..." : "Action"}
-                </option>
+                <option value="">{busy ? "Updating..." : "Action"}</option>
                 {nextStatuses.map((nextStatus) => (
                   <option key={nextStatus} value={nextStatus}>
-                    Mark {STATUS_LABEL[nextStatus]}
+                    {nextStatus === "CONFIRMED"
+                      ? "Confirm & send to Steadfast"
+                      : order.status === "CONFIRMED" &&
+                          nextStatus === "PROCESSING"
+                        ? "Retry Steadfast dispatch"
+                        : `Mark ${STATUS_LABEL[nextStatus]}`}
                   </option>
                 ))}
               </select>
@@ -567,9 +624,7 @@ function OrderRows({
         <td className="min-w-52 px-3 py-3 align-top">
           <p className="font-black text-slate-900">{order.customerName}</p>
           {order.email && (
-            <p className="mt-0.5 text-[11px] text-slate-500">
-              {order.email}
-            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">{order.email}</p>
           )}
           <a
             href={"tel:" + order.phone}
@@ -607,6 +662,44 @@ function OrderRows({
           </span>
         </td>
 
+        <td className="min-w-44 px-3 py-3 align-top">
+          {order.steadfastStatus ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-violet-100 px-2 py-1 text-[10px] font-black text-violet-700">
+                  {order.steadfastStatus}
+                </span>
+                {order.status !== "DELIVERED" &&
+                  order.status !== "CANCELLED" && (
+                    <button
+                      type="button"
+                      onClick={onSync}
+                      disabled={busy}
+                      className="grid size-7 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 disabled:opacity-40"
+                      title="Steadfast status sync করুন"
+                    >
+                      <RefreshCcw
+                        className={"size-3.5 " + (busy ? "animate-spin" : "")}
+                      />
+                    </button>
+                  )}
+              </div>
+              {order.steadfastTrackingCode && (
+                <p className="mt-1 font-mono text-[10px] text-slate-500">
+                  {order.steadfastTrackingCode}
+                </p>
+              )}
+            </>
+          ) : (
+            <span className="text-[11px] text-slate-400">Not submitted</span>
+          )}
+          {order.steadfastError && (
+            <p className="mt-1 max-w-44 text-[10px] text-rose-600">
+              {order.steadfastError}
+            </p>
+          )}
+        </td>
+
         <td className="px-3 py-3 align-top">
           <span
             className={
@@ -616,20 +709,35 @@ function OrderRows({
           >
             {STATUS_LABEL[order.status]}
           </span>
-          {order.status !== "DELIVERED" &&
-            order.status !== "CANCELLED" && (
-              <span className="mt-1 block w-fit rounded bg-amber-400 px-2 py-0.5 text-[10px] font-black text-white">
-                Due
-              </span>
-            )}
+          {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
+            <span className="mt-1 block w-fit rounded bg-amber-400 px-2 py-0.5 text-[10px] font-black text-white">
+              Due
+            </span>
+          )}
         </td>
       </tr>
 
       {isExpanded && (
         <tr className="bg-[#f8fbff]">
-          <td colSpan={11} className="p-4">
+          <td colSpan={12} className="p-4">
             <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
               <div>
+                <div className="mb-4 rounded-xl border border-violet-100 bg-violet-50 p-3 text-[11px] text-slate-600">
+                  <p className="font-black text-violet-800">
+                    Steadfast delivery
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <span>
+                      Delivery:{" "}
+                      {order.deliveryType === 1 ? "Hub pickup" : "Home"}
+                    </span>
+                    <span>Alt phone: {order.alternativePhone || "—"}</span>
+                    <span>
+                      Consignment: {order.steadfastConsignmentId || "—"}
+                    </span>
+                    <span>Tracking: {order.steadfastTrackingCode || "—"}</span>
+                  </div>
+                </div>
                 <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
                   Order items
                 </p>
