@@ -1,6 +1,7 @@
 import {
   Boxes,
   BookOpen,
+  Bot,
   PackageOpen,
   ClipboardList,
   Images,
@@ -27,6 +28,7 @@ export const ADMIN_NAV_ITEMS = [
   },
   { href: "/orders", labelKey: "admin.navigation.orders", icon: ClipboardList },
   { href: "/customers", labelKey: "admin.navigation.customers", icon: Users },
+  { href: "/ai-assistant", labelKey: "admin.navigation.aiAssistant", icon: Bot },
   {
     href: "/coupons",
     labelKey: "admin.navigation.coupons",

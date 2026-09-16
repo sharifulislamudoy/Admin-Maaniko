@@ -29,6 +29,7 @@ export const adminText = {
       categories: "Categories",
       orders: "Orders",
       customers: "Customers",
+      aiAssistant: "AI Assistant",
       coupons: "Coupons",
       adminManagement: "Admin management",
       settings: "Settings",
