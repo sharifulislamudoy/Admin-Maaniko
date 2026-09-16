@@ -1,149 +1,315 @@
 "use client";
 
 import {
-  ArrowRight,
+  Bot,
   Boxes,
-  CircleDollarSign,
-  ShoppingBag,
-  Users,
+  BookOpen,
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  Images,
+  PackageOpen,
+  RefreshCw,
+  ShieldCheck,
+  Shapes,
+  UserRound,
+  UsersRound,
 } from "lucide-react";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import StatCard from "@/components/admin/StatCard";
-import AiAnalyticsPanel from "@/components/admin/AiAnalyticsPanel";
-import { useAdminText } from "@/context/AdminTextContext";
+type DashboardSummary = {
+  customers: number;
+  guests: number;
 
-const recentOrders = [
-  {
-    id: "MN-1048",
-    customer: "Sadia Rahman",
-    total: "৳4,850",
-    status: "processing",
-  },
-  {
-    id: "MN-1047",
-    customer: "Nusrat Jahan",
-    total: "৳2,990",
-    status: "delivered",
-  },
-  {
-    id: "MN-1046",
-    customer: "Raisa Ahmed",
-    total: "৳1,650",
-    status: "pending",
-  },
-  {
-    id: "MN-1045",
-    customer: "Tahmina Akter",
-    total: "৳3,420",
-    status: "cancelled",
-  },
-];
+  products: {
+    total: number;
+    active: number;
+  };
 
-const statusClasses: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 ring-amber-200",
-  processing: "bg-sky-50 text-sky-700 ring-sky-200",
-  delivered: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  cancelled: "bg-rose-50 text-rose-700 ring-rose-200",
+  combos: {
+    total: number;
+    active: number;
+  };
+
+  categories: number;
+
+  orders: {
+    total: number;
+    pending: number;
+  };
+
+  banners: {
+    total: number;
+    active: number;
+  };
+
+  guides: {
+    total: number;
+    published: number;
+  };
+
+  contentPages: {
+    total: number;
+    published: number;
+  };
+
+  admins: {
+    total: number;
+    pending: number;
+  };
+
+  aiCredits: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
 };
 
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+const iconStyles = {
+  pink: "bg-[#fff0f5] text-[#ef4277]",
+  blue: "bg-[#eaf8fe] text-[#10a9e8]",
+  navy: "bg-[#eef3f8] text-[#062a54]",
+  green: "bg-emerald-50 text-emerald-600",
+  amber: "bg-amber-50 text-amber-600",
+  violet: "bg-violet-50 text-violet-600",
+} as const;
+
 export default function DashboardPage() {
-  const { t } = useAdminText();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadSummary = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/dashboard-summary", {
+        cache: "no-store",
+      });
+
+      const body = (await response.json()) as DashboardSummary & {
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          body.message || "Dashboard data could not be loaded.",
+        );
+      }
+
+      setSummary(body);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Dashboard data could not be loaded.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadSummary();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadSummary]);
+
+  const cards = useMemo(
+    () => [
+      {
+        label: "Customers",
+        value: summary?.customers,
+        detail: "Registered customer profiles",
+        href: "/customers",
+        icon: UsersRound,
+        accent: "pink" as const,
+      },
+      {
+        label: "Guest Visitors",
+        value: summary?.guests,
+        detail: "Guest IDs not linked to customers",
+        href: "/customers",
+        icon: UserRound,
+        accent: "blue" as const,
+      },
+      {
+        label: "Orders",
+        value: summary?.orders.total,
+        detail: `${numberFormatter.format(
+          summary?.orders.pending ?? 0,
+        )} pending`,
+        href: "/orders",
+        icon: ClipboardList,
+        accent: "green" as const,
+      },
+      {
+        label: "Products",
+        value: summary?.products.total,
+        detail: `${numberFormatter.format(
+          summary?.products.active ?? 0,
+        )} active`,
+        href: "/products",
+        icon: Boxes,
+        accent: "navy" as const,
+      },
+      {
+        label: "Solution Boxes",
+        value: summary?.combos.total,
+        detail: `${numberFormatter.format(
+          summary?.combos.active ?? 0,
+        )} active`,
+        href: "/combos",
+        icon: PackageOpen,
+        accent: "pink" as const,
+      },
+      {
+        label: "Categories",
+        value: summary?.categories,
+        detail: "Product categories",
+        href: "/categories",
+        icon: Shapes,
+        accent: "amber" as const,
+      },
+      {
+        label: "Guides",
+        value: summary?.guides.total,
+        detail: `${numberFormatter.format(
+          summary?.guides.published ?? 0,
+        )} published`,
+        href: "/guides",
+        icon: BookOpen,
+        accent: "green" as const,
+      },
+      {
+        label: "Banners",
+        value: summary?.banners.total,
+        detail: `${numberFormatter.format(
+          summary?.banners.active ?? 0,
+        )} active`,
+        href: "/banners",
+        icon: Images,
+        accent: "blue" as const,
+      },
+      {
+        label: "Content Pages",
+        value: summary?.contentPages.total,
+        detail: `${numberFormatter.format(
+          summary?.contentPages.published ?? 0,
+        )} published`,
+        href: "/pages/help-center",
+        icon: FileText,
+        accent: "navy" as const,
+      },
+      {
+        label: "Admins",
+        value: summary?.admins.total,
+        detail: `${numberFormatter.format(
+          summary?.admins.pending ?? 0,
+        )} pending approval`,
+        href: "/admin-management",
+        icon: ShieldCheck,
+        accent: "amber" as const,
+      },
+      {
+        label: "AI Credit Used",
+        value: summary?.aiCredits.total,
+        detail: "Total recorded tokens",
+        href: "/ai-assistant",
+        icon: Bot,
+        accent: "violet" as const,
+      },
+    ],
+    [summary],
+  );
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-        <StatCard
-          label={t("admin.dashboard.revenue")}
-          value="৳2,48,560"
-          change={t("admin.dashboard.upFromLastMonth", { value: "12.5%" })}
-          icon={CircleDollarSign}
-          accent="pink"
-        />
-        <StatCard
-          label={t("admin.dashboard.orders")}
-          value="1,248"
-          change={t("admin.dashboard.upFromLastMonth", { value: "8.2%" })}
-          icon={ShoppingBag}
-          accent="blue"
-        />
-        <StatCard
-          label={t("admin.dashboard.products")}
-          value="386"
-          change={t("admin.dashboard.lowStock", { value: "14" })}
-          icon={Boxes}
-          accent="navy"
-        />
-        <StatCard
-          label={t("admin.dashboard.customers")}
-          value="3,692"
-          change={t("admin.dashboard.newCustomers", { value: "96" })}
-          icon={Users}
-          accent="green"
-        />
-      </section>
+    <main>
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-black text-[#062a54] sm:text-2xl">
+            Dashboard Summary
+          </h1>
 
-      <AiAnalyticsPanel />
+          <p className="mt-1 text-sm text-slate-500">
+            Live totals from the Maaniko database
+          </p>
+        </div>
 
-      <section className="rounded-3xl border border-[#dce3ec] bg-white shadow-[0_12px_40px_rgba(6,42,84,0.06)]">
-        <div className="flex items-center justify-between gap-4 border-b border-[#dce3ec] px-5 py-5 sm:px-6">
-          <div>
-            <h2 className="text-lg font-black text-[#062a54]">
-              {t("admin.dashboard.recentOrders")}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {t("admin.dashboard.recentOrdersSubtitle")}
-            </p>
-          </div>
-          <Link
-            href="/orders"
-            className="inline-flex shrink-0 items-center gap-2 text-sm font-extrabold text-[#ef4277] transition-colors hover:text-[#10a9e8]"
+        <button
+          type="button"
+          onClick={() => void loadSummary()}
+          disabled={loading}
+          aria-label="Refresh dashboard"
+          className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dce3ec] bg-white text-[#062a54] transition hover:border-[#ef4277]/40 hover:text-[#ef4277] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <RefreshCw
+            className={`size-4 ${loading ? "animate-spin" : ""}`}
+          />
+        </button>
+      </div>
+
+      {error ? (
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+          <p className="text-sm font-bold text-rose-700">{error}</p>
+
+          <button
+            type="button"
+            onClick={() => void loadSummary()}
+            className="mt-3 text-sm font-black text-[#062a54] underline underline-offset-4"
           >
-            <span className="hidden sm:inline">
-              {t("admin.common.viewAll")}
-            </span>
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
+            Try again
+          </button>
+        </section>
+      ) : (
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {cards.map((card) => {
+            const Icon = card.icon;
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left">
-            <thead className="bg-[#f8fafc] text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500">
-              <tr>
-                <th className="px-6 py-4">{t("admin.table.orderId")}</th>
-                <th className="px-6 py-4">{t("admin.table.customer")}</th>
-                <th className="px-6 py-4">{t("admin.table.total")}</th>
-                <th className="px-6 py-4">{t("admin.table.status")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edf1f5]">
-              {recentOrders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="transition-colors hover:bg-[#fff8fa]"
-                >
-                  <td className="px-6 py-4 text-sm font-black text-[#062a54]">
-                    {order.id}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-slate-700">
-                    {order.customer}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-black text-[#ef4277]">
-                    {order.total}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ring-1 ring-inset ${statusClasses[order.status]}`}
-                    >
-                      {t(`admin.status.${order.status}`)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+            return (
+              <Link
+                key={card.label}
+                href={card.href}
+                className="group rounded-2xl border border-[#dce3ec] bg-white p-4 shadow-[0_8px_28px_rgba(6,42,84,0.045)] transition duration-200 hover:-translate-y-0.5 hover:border-[#ef4277]/25 hover:shadow-[0_14px_34px_rgba(6,42,84,0.08)] sm:p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span
+                    className={`grid size-11 shrink-0 place-items-center rounded-xl ${
+                      iconStyles[card.accent]
+                    }`}
+                  >
+                    <Icon className="size-5" />
+                  </span>
+
+                  <ChevronRight className="mt-1 size-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#ef4277]" />
+                </div>
+
+                <p className="mt-4 text-sm font-bold text-slate-500">
+                  {card.label}
+                </p>
+
+                <p className="mt-1 text-2xl font-black tracking-tight text-[#062a54]">
+                  {loading || card.value === undefined
+                    ? "—"
+                    : numberFormatter.format(card.value)}
+                </p>
+
+                <p className="mt-2 text-xs font-semibold text-slate-400">
+                  {loading
+                    ? "Loading database summary..."
+                    : card.detail}
+                </p>
+              </Link>
+            );
+          })}
+        </section>
+      )}
+    </main>
   );
 }

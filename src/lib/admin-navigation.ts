@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 
 export const ADMIN_NAV_ITEMS = [
-  { href: "/guides", labelKey: "admin.navigation.guides", icon: BookOpen },
   { href: "/", labelKey: "admin.navigation.dashboard", icon: LayoutDashboard },
   { href: "/banners", labelKey: "admin.navigation.banners", icon: Images },
   { href: "/products", labelKey: "admin.navigation.products", icon: Boxes },
   { href: "/combos", labelKey: "admin.navigation.combos", icon: PackageOpen },
+  { href: "/guides", labelKey: "admin.navigation.guides", icon: BookOpen },
   {
     href: "/categories",
     labelKey: "admin.navigation.categories",
