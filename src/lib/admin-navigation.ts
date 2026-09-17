@@ -13,12 +13,19 @@ import {
   Users,
   Headphones,
   ScrollText,
+  Warehouse,
+  ChartNoAxesCombined,
 } from "lucide-react";
 
 export const ADMIN_NAV_ITEMS = [
   { href: "/", labelKey: "admin.navigation.dashboard", icon: LayoutDashboard },
   { href: "/banners", labelKey: "admin.navigation.banners", icon: Images },
   { href: "/products", labelKey: "admin.navigation.products", icon: Boxes },
+  {
+    href: "/inventory",
+    labelKey: "admin.navigation.inventory",
+    icon: Warehouse,
+  },
   { href: "/combos", labelKey: "admin.navigation.combos", icon: PackageOpen },
   { href: "/guides", labelKey: "admin.navigation.guides", icon: BookOpen },
   {
@@ -27,8 +34,17 @@ export const ADMIN_NAV_ITEMS = [
     icon: Shapes,
   },
   { href: "/orders", labelKey: "admin.navigation.orders", icon: ClipboardList },
+  {
+    href: "/finance",
+    labelKey: "admin.navigation.finance",
+    icon: ChartNoAxesCombined,
+  },
   { href: "/customers", labelKey: "admin.navigation.customers", icon: Users },
-  { href: "/ai-assistant", labelKey: "admin.navigation.aiAssistant", icon: Bot },
+  {
+    href: "/ai-assistant",
+    labelKey: "admin.navigation.aiAssistant",
+    icon: Bot,
+  },
   {
     href: "/coupons",
     labelKey: "admin.navigation.coupons",

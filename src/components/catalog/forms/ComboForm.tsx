@@ -3,11 +3,7 @@
 
 import { Plus } from "lucide-react";
 import { slugify } from "@/lib/catalog-editor";
-import type {
-  ComboPayload,
-  ContentText,
-  ProductOption,
-} from "@/types/catalog";
+import type { ComboPayload, ContentText, ProductOption } from "@/types/catalog";
 import ImageUploader from "./ImageUploader";
 import {
   EmptyState,
@@ -243,7 +239,7 @@ export default function ComboForm({
         description="বক্সের মোট বিক্রয় মূল্য ও প্রাপ্যতা"
       >
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Field label="Box price (৳)" required>
               <input
                 type="number"
@@ -276,6 +272,21 @@ export default function ComboForm({
                 value={value.stock}
                 onChange={(event) =>
                   onChange({ ...value, stock: Number(event.target.value) })
+                }
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Box packaging cost (৳)">
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={value.packagingCost}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    packagingCost: Number(event.target.value),
+                  })
                 }
                 className={inputClass}
               />

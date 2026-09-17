@@ -25,9 +25,11 @@ export const adminText = {
       banners: "Banners",
       guides: "Guides",
       products: "Products",
+      inventory: "Inventory",
       combos: "Solution boxes",
       categories: "Categories",
       orders: "Orders",
+      finance: "Revenue & Profit",
       customers: "Customers",
       aiAssistant: "AI Assistant",
       coupons: "Coupons",
@@ -37,7 +39,8 @@ export const adminText = {
     dashboard: {
       eyebrow: "Maaniko store overview",
       welcome: "Welcome, {{name}}",
-      subtitle: "Review the latest sales, orders, products, and customer activity.",
+      subtitle:
+        "Review the latest sales, orders, products, and customer activity.",
       revenue: "Total revenue",
       orders: "Total orders",
       products: "Total products",
@@ -69,9 +72,18 @@ export const adminText = {
       rejected: "Admin request rejected.",
       deleted: "Admin account deleted.",
       confirm: {
-        approve: { title: "Approve admin?", description: "{{name}} will be able to sign in to the Admin Portal." },
-        reject: { title: "Reject admin?", description: "Confirm that you want to reject {{name}}." },
-        delete: { title: "Delete admin?", description: "{{name}}'s account will be permanently deleted." },
+        approve: {
+          title: "Approve admin?",
+          description: "{{name}} will be able to sign in to the Admin Portal.",
+        },
+        reject: {
+          title: "Reject admin?",
+          description: "Confirm that you want to reject {{name}}.",
+        },
+        delete: {
+          title: "Delete admin?",
+          description: "{{name}}'s account will be permanently deleted.",
+        },
       },
     },
     role: { admin: "Admin", superAdmin: "Super admin" },
@@ -96,7 +108,18 @@ export const adminText = {
       oauthError: "Google sign-in could not be completed.",
       missingToken: "Google identity token was not returned.",
     },
-    table: { orderId: "Order ID", customer: "Customer", status: "Status", total: "Total", actions: "Actions" },
-    common: { viewAll: "View all", comingSoon: "This module will be available soon.", items: "items", management: "Management" },
+    table: {
+      orderId: "Order ID",
+      customer: "Customer",
+      status: "Status",
+      total: "Total",
+      actions: "Actions",
+    },
+    common: {
+      viewAll: "View all",
+      comingSoon: "This module will be available soon.",
+      items: "items",
+      management: "Management",
+    },
   },
 } as const;

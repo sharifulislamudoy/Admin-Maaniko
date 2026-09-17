@@ -9,6 +9,9 @@ import {
   Printer,
   RefreshCcw,
   Search,
+  Pencil,
+  X,
+  Save,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -20,6 +23,7 @@ type OrderStatus =
   | "PROCESSING"
   | "SHIPPED"
   | "DELIVERED"
+  | "RETURNED"
   | "CANCELLED";
 
 type OrderItem = {
@@ -30,6 +34,8 @@ type OrderItem = {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  purchaseCostSnapshot?: number;
+  packagingCostSnapshot?: number;
   customConfig?: Array<{
     productId: string;
     name?: string;
@@ -72,6 +78,17 @@ export type Order = {
   subtotal: number;
   deliveryCharge: number;
   total: number;
+  revenue?: number;
+  productCost?: number;
+  packagingCost?: number;
+  courierCost?: number;
+  gatewayFee?: number;
+  otherCost?: number;
+  totalCost?: number;
+  grossProfit?: number;
+  netProfit?: number;
+  profitMargin?: number;
+  financialRecognized?: boolean;
 
   createdAt: string;
   items: OrderItem[];
@@ -95,6 +112,7 @@ const STATUSES: OrderStatus[] = [
   "PROCESSING",
   "SHIPPED",
   "DELIVERED",
+  "RETURNED",
   "CANCELLED",
 ];
 
@@ -104,6 +122,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   PROCESSING: "Processing",
   SHIPPED: "Shipped",
   DELIVERED: "Delivered",
+  RETURNED: "Returned",
   CANCELLED: "Cancelled",
 };
 
@@ -113,6 +132,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   PROCESSING: "border-orange-200 bg-orange-50 text-orange-700",
   SHIPPED: "border-violet-200 bg-violet-50 text-violet-700",
   DELIVERED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  RETURNED: "border-orange-200 bg-orange-50 text-orange-700",
   CANCELLED: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
@@ -121,7 +141,8 @@ const NEXT: Record<OrderStatus, OrderStatus[]> = {
   CONFIRMED: ["PROCESSING", "CANCELLED"],
   PROCESSING: ["SHIPPED", "CANCELLED"],
   SHIPPED: ["DELIVERED"],
-  DELIVERED: [],
+  DELIVERED: ["RETURNED"],
+  RETURNED: [],
   CANCELLED: [],
 };
 
@@ -132,6 +153,7 @@ const EMPTY_COUNTS: Record<"ALL" | OrderStatus, number> = {
   PROCESSING: 0,
   SHIPPED: 0,
   DELIVERED: 0,
+  RETURNED: 0,
   CANCELLED: 0,
 };
 
@@ -182,6 +204,7 @@ export default function OrdersManager() {
   const [expanded, setExpanded] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [printingOrders, setPrintingOrders] = useState<Order[]>([]);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -622,6 +645,7 @@ export default function OrdersManager() {
                     }
                     onSync={() => void syncOne(order.id)}
                     onPrint={() => setPrintingOrders([order])}
+                    onEdit={() => setEditingOrder(order)}
                   />
                 );
               })}
@@ -693,6 +717,16 @@ export default function OrdersManager() {
         orders={printingOrders}
         onAfterPrint={() => setPrintingOrders([])}
       />
+      {editingOrder ? (
+        <OrderEditModal
+          order={editingOrder}
+          onClose={() => setEditingOrder(null)}
+          onSaved={async () => {
+            setEditingOrder(null);
+            await load();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -709,6 +743,7 @@ function OrderRows({
   onUpdate,
   onSync,
   onPrint,
+  onEdit,
 }: {
   order: Order;
   index: number;
@@ -721,6 +756,7 @@ function OrderRows({
   onUpdate: (status: OrderStatus, manual?: boolean) => void;
   onSync: () => void;
   onPrint: () => void;
+  onEdit: () => void;
 }) {
   return (
     <>
@@ -909,6 +945,7 @@ function OrderRows({
                 </span>
 
                 {order.status !== "DELIVERED" &&
+                  order.status !== "RETURNED" &&
                   order.status !== "CANCELLED" && (
                     <button
                       type="button"
@@ -954,11 +991,13 @@ function OrderRows({
             {STATUS_LABEL[order.status]}
           </span>
 
-          {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
-            <span className="mt-1.5 block w-fit rounded-md bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-600">
-              Due
-            </span>
-          )}
+          {order.status !== "DELIVERED" &&
+            order.status !== "RETURNED" &&
+            order.status !== "CANCELLED" && (
+              <span className="mt-1.5 block w-fit rounded-md bg-rose-50 px-2 py-0.5 text-[9px] font-bold text-rose-600">
+                Due
+              </span>
+            )}
         </td>
       </tr>
 
@@ -976,11 +1015,24 @@ function OrderRows({
                       Steadfast delivery
                     </p>
 
-                    {order.steadfastStatus && (
-                      <span className="rounded-md bg-white px-2 py-1 text-[9px] font-bold text-[#ef4277] shadow-sm">
-                        {order.steadfastStatus}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {order.status !== "DELIVERED" &&
+                      order.status !== "RETURNED" &&
+                      order.status !== "CANCELLED" ? (
+                        <button
+                          type="button"
+                          onClick={onEdit}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-pink-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#ef4277] transition hover:bg-pink-50"
+                        >
+                          <Pencil className="size-3" /> Edit order
+                        </button>
+                      ) : null}
+                      {order.steadfastStatus && (
+                        <span className="rounded-md bg-white px-2 py-1 text-[9px] font-bold text-[#ef4277] shadow-sm">
+                          {order.steadfastStatus}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid gap-x-6 gap-y-2 p-3 text-[11px] text-slate-500 sm:grid-cols-2">
@@ -1115,6 +1167,22 @@ function OrderRows({
                     </div>
                   </div>
                 </div>
+                {order.financialRecognized ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <DetailValue
+                      label="Revenue"
+                      value={formatMoney(order.revenue ?? 0)}
+                    />
+                    <DetailValue
+                      label="Total cost"
+                      value={formatMoney(order.totalCost ?? 0)}
+                    />
+                    <DetailValue
+                      label="Actual profit"
+                      value={formatMoney(order.netProfit ?? 0)}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               {/* History */}
@@ -1185,6 +1253,248 @@ function DetailValue({ label, value }: { label: string; value: string }) {
       <span className="min-w-0 break-all text-right font-semibold text-slate-700">
         {value}
       </span>
+    </div>
+  );
+}
+
+function OrderEditModal({
+  order,
+  onClose,
+  onSaved,
+}: {
+  order: Order;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [items, setItems] = useState(() =>
+    order.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      applyPriceToCatalog: false,
+    })),
+  );
+  const [deliveryCharge, setDeliveryCharge] = useState(order.deliveryCharge);
+  const [courierCost, setCourierCost] = useState(order.courierCost ?? 0);
+  const [gatewayFee, setGatewayFee] = useState(order.gatewayFee ?? 0);
+  const [otherCost, setOtherCost] = useState(order.otherCost ?? 0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const subtotal = items.reduce(
+    (sum, item) => sum + Number(item.quantity) * Number(item.unitPrice),
+    0,
+  );
+
+  async function save() {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/commerce/orders/${encodeURIComponent(order.id)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map(({ name: _name, ...item }) => item),
+            deliveryCharge,
+            courierCost,
+            gatewayFee,
+            otherCost,
+            note: "Admin edited quantity/price/cost",
+          }),
+        },
+      );
+      const body = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Order update failed");
+      await onSaved();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Order update failed",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-sm sm:items-center sm:p-5"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-4 backdrop-blur sm:px-6">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#ef4277]">
+              {order.orderNumber}
+            </p>
+            <h2 className="mt-1 text-xl font-extrabold text-[#062a54]">
+              Edit order
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-10 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+          >
+            <X className="size-4" />
+          </button>
+        </header>
+        <div className="space-y-4 p-4 sm:p-6">
+          {error ? (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+              {error}
+            </p>
+          ) : null}
+          <div className="space-y-2">
+            {items.map((item, index) => (
+              <article
+                key={item.id}
+                className="grid gap-3 rounded-2xl border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_110px_150px] md:items-end"
+              >
+                <div>
+                  <p className="text-sm font-bold text-slate-800">
+                    {item.name}
+                  </p>
+                  <label className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={item.applyPriceToCatalog}
+                      onChange={(event) =>
+                        setItems((current) =>
+                          current.map((entry, itemIndex) =>
+                            itemIndex === index
+                              ? {
+                                  ...entry,
+                                  applyPriceToCatalog: event.target.checked,
+                                }
+                              : entry,
+                          ),
+                        )
+                      }
+                      className="size-4 accent-[#ef4277]"
+                    />
+                    এই price catalog-এর পরবর্তী order-এও ব্যবহার হবে
+                  </label>
+                </div>
+                <label className="text-xs font-bold text-slate-500">
+                  Quantity
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={item.quantity}
+                    onChange={(event) =>
+                      setItems((current) =>
+                        current.map((entry, itemIndex) =>
+                          itemIndex === index
+                            ? {
+                                ...entry,
+                                quantity: Math.max(
+                                  1,
+                                  Number(event.target.value),
+                                ),
+                              }
+                            : entry,
+                        ),
+                      )
+                    }
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#ef4277]"
+                  />
+                </label>
+                <label className="text-xs font-bold text-slate-500">
+                  Order sell price
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={item.unitPrice}
+                    onChange={(event) =>
+                      setItems((current) =>
+                        current.map((entry, itemIndex) =>
+                          itemIndex === index
+                            ? {
+                                ...entry,
+                                unitPrice: Math.max(
+                                  0,
+                                  Number(event.target.value),
+                                ),
+                              }
+                            : entry,
+                        ),
+                      )
+                    }
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#ef4277]"
+                  />
+                </label>
+              </article>
+            ))}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Delivery charge", deliveryCharge, setDeliveryCharge],
+              ["Actual courier cost", courierCost, setCourierCost],
+              ["Gateway fee", gatewayFee, setGatewayFee],
+              ["Other cost", otherCost, setOtherCost],
+            ].map(([label, value, setter]) => (
+              <label
+                key={String(label)}
+                className="text-xs font-bold text-slate-500"
+              >
+                {String(label)}
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={Number(value)}
+                  onChange={(event) =>
+                    (setter as (value: number) => void)(
+                      Math.max(0, Number(event.target.value)),
+                    )
+                  }
+                  className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#ef4277]"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="rounded-2xl bg-[#fff4f6] p-4 text-sm">
+            <div className="flex justify-between text-slate-500">
+              <span>Subtotal</span>
+              <strong className="text-slate-800">
+                {formatMoney(subtotal)}
+              </strong>
+            </div>
+            <div className="mt-2 flex justify-between border-t border-pink-100 pt-2 font-extrabold text-[#062a54]">
+              <span>New total</span>
+              <span>{formatMoney(subtotal + deliveryCharge)}</span>
+            </div>
+          </div>
+        </div>
+        <footer className="sticky bottom-0 flex justify-end gap-2 border-t border-slate-100 bg-white/95 p-4 backdrop-blur sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-600"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void save()}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#ef4277] px-5 text-sm font-bold text-white disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            Save order
+          </button>
+        </footer>
+      </section>
     </div>
   );
 }

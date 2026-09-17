@@ -22,6 +22,8 @@ export type ProductVariant = {
   price: number | null;
   compareAtPrice: number | null;
   stock: number;
+  purchaseCost: number;
+  packagingCost: number;
   imageUrl: string | null;
   isActive: boolean;
   selections: Array<{ attribute: string; value: string }>;
@@ -38,6 +40,8 @@ export type ProductPayload = {
   price: number;
   compareAtPrice: number | null;
   stock: number;
+  purchaseCost: number;
+  packagingCost: number;
   rating: number;
   reviewCount: number;
   status: CatalogStatus;
@@ -67,6 +71,7 @@ export type ComboPayload = {
   price: number;
   compareAtPrice: number;
   stock: number;
+  packagingCost: number;
   rating: number;
   reviewCount: number;
   status: CatalogStatus;

@@ -10,6 +10,7 @@ import {
   RefreshCcw,
   Search,
   Trash2,
+  History,
 } from "lucide-react";
 import {
   createTemplate,
@@ -27,6 +28,7 @@ import type {
   ProductPayload,
 } from "@/types/catalog";
 import CatalogEditorModal from "./CatalogEditorModal";
+import { ProductHistoryModal } from "@/components/admin/InventoryManager";
 
 const resourceCopy: Record<
   CatalogResource,
@@ -179,6 +181,11 @@ export default function CatalogCrudPage({
   const [error, setError] = useState("");
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [historyProduct, setHistoryProduct] = useState<{
+    id: string;
+    name: string;
+    sku: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -524,6 +531,22 @@ export default function CatalogCrudPage({
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-end gap-2">
+                          {resource === "products" ? (
+                            <button
+                              onClick={() =>
+                                setHistoryProduct({
+                                  id: row.id,
+                                  name: rowName(row),
+                                  sku: String(row.sku ?? ""),
+                                })
+                              }
+                              className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700 transition hover:bg-amber-100"
+                              aria-label="Customer এবং stock history দেখুন"
+                              title="Customer & stock history"
+                            >
+                              <History className="size-4" />
+                            </button>
+                          ) : null}
                           <button
                             onClick={() => openEdit(row)}
                             className="grid size-9 place-items-center rounded-xl bg-sky-50 text-sky-700 transition hover:bg-sky-100"
@@ -566,6 +589,12 @@ export default function CatalogCrudPage({
         }
         onClearDraft={clearCreateDraft}
       />
+      {historyProduct ? (
+        <ProductHistoryModal
+          product={historyProduct}
+          onClose={() => setHistoryProduct(null)}
+        />
+      ) : null}
     </div>
   );
 }

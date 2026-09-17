@@ -348,7 +348,7 @@ export default function ProductForm({
         description="বিক্রয় মূল্য, আগের মূল্য এবং ওয়েবসাইটে দেখানোর অবস্থা"
       >
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Field label="Sale price (৳)" required>
               <input
                 type="number"
@@ -383,6 +383,36 @@ export default function ProductForm({
                 value={value.stock}
                 onChange={(event) =>
                   onChange({ ...value, stock: Number(event.target.value) })
+                }
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Purchase cost (৳)" required>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={value.purchaseCost}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    purchaseCost: Number(event.target.value),
+                  })
+                }
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Packaging cost (৳)">
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={value.packagingCost}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    packagingCost: Number(event.target.value),
+                  })
                 }
                 className={inputClass}
               />
@@ -815,6 +845,8 @@ export default function ProductForm({
                         price: null,
                         compareAtPrice: null,
                         stock: 0,
+                        purchaseCost: value.purchaseCost,
+                        packagingCost: value.packagingCost,
                         imageUrl: null,
                         isActive: true,
                         selections: value.attributes.map((attribute) => ({
@@ -899,7 +931,7 @@ export default function ProductForm({
                       );
                     })}
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
                     <Field label="Variant SKU" required>
                       <input
                         value={variant.sku}
@@ -955,6 +987,42 @@ export default function ProductForm({
                             variants: replaceAt(value.variants, variantIndex, {
                               ...variant,
                               stock: Number(event.target.value),
+                            }),
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="Purchase cost">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={variant.purchaseCost}
+                        onChange={(event) =>
+                          onChange({
+                            ...value,
+                            variants: replaceAt(value.variants, variantIndex, {
+                              ...variant,
+                              purchaseCost: Number(event.target.value),
+                            }),
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </Field>
+                    <Field label="Packaging cost">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={variant.packagingCost}
+                        onChange={(event) =>
+                          onChange({
+                            ...value,
+                            variants: replaceAt(value.variants, variantIndex, {
+                              ...variant,
+                              packagingCost: Number(event.target.value),
                             }),
                           })
                         }

@@ -22,6 +22,8 @@ const productTemplate = (): ProductPayload => ({
   price: 0,
   compareAtPrice: null,
   stock: 0,
+  purchaseCost: 0,
+  packagingCost: 0,
   rating: 5,
   reviewCount: 0,
   status: "DRAFT",
@@ -43,6 +45,7 @@ const comboTemplate = (): ComboPayload => ({
   price: 0,
   compareAtPrice: 0,
   stock: 0,
+  packagingCost: 0,
   rating: 5,
   reviewCount: 0,
   status: "DRAFT",
@@ -173,6 +176,8 @@ export function payloadFromRow(
         price: variant.price ?? null,
         compareAtPrice: variant.compareAtPrice ?? null,
         stock: variant.stock,
+        purchaseCost: variant.purchaseCost ?? 0,
+        packagingCost: variant.packagingCost ?? 0,
         imageUrl: variant.imageUrl ?? null,
         isActive: variant.isActive ?? true,
         selections: variant.selections ?? [],
@@ -200,9 +205,9 @@ export function payloadFromRow(
       whyThisBox: ((row.whyThisBox as ContentText[] | undefined) ?? []).map(
         asText,
       ),
-      preferredFor: (
-        (row.preferredFor as ContentText[] | undefined) ?? []
-      ).map(asText),
+      preferredFor: ((row.preferredFor as ContentText[] | undefined) ?? []).map(
+        asText,
+      ),
       selectionReasons: (
         (row.selectionReasons as ContentText[] | undefined) ?? []
       ).map(asText),
