@@ -22,6 +22,7 @@ import type {
   CatalogResource,
   CatalogRow,
   ComboPayload,
+  ProductCategoryOption,
   ProductOption,
   ProductPayload,
 } from "@/types/catalog";
@@ -55,6 +56,29 @@ const statusCopy: Record<string, string> = {
   ACTIVE: "সক্রিয়",
   ARCHIVED: "আর্কাইভ",
 };
+
+const PRODUCT_CREATE_DRAFT_KEY = "maaniko-admin-product-create-draft-v1";
+
+type StoredProductDraft = {
+  payload: ProductPayload;
+  savedAt: string;
+};
+
+function readProductDraft(): StoredProductDraft | null {
+  try {
+    const raw = window.localStorage.getItem(PRODUCT_CREATE_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredProductDraft>;
+    if (!parsed.payload || typeof parsed.savedAt !== "string") return null;
+    return parsed as StoredProductDraft;
+  } catch {
+    return null;
+  }
+}
+
+function removeProductDraft() {
+  window.localStorage.removeItem(PRODUCT_CREATE_DRAFT_KEY);
+}
 
 function rowName(row: CatalogRow) {
   return String(row.name ?? row.title ?? row.key ?? row.slug ?? row.id);
@@ -99,6 +123,14 @@ function validate(resource: CatalogResource, payload: CatalogPayload) {
     )
       return "প্রতিটি অ্যাট্রিবিউটের বাংলা নাম এবং অন্তত একটি পূর্ণ ভ্যালু দিন।";
     if (
+      product.attributes.some((attribute) =>
+        attribute.values.some(
+          (item) => item.colorHex && !/^#[0-9A-F]{6}$/i.test(item.colorHex),
+        ),
+      )
+    )
+      return "Color code সম্পূর্ণ 6-digit HEX format-এ দিন—যেমন #FC5689।";
+    if (
       product.variants.some(
         (variant) =>
           !variant.sku ||
@@ -134,6 +166,7 @@ export default function CatalogCrudPage({
 }) {
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
+  const [categories, setCategories] = useState<ProductCategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -145,6 +178,7 @@ export default function CatalogCrudPage({
   );
   const [error, setError] = useState("");
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,16 +189,23 @@ export default function CatalogCrudPage({
       ];
       if (resource === "combos")
         requests.push(fetch("/api/catalog/products", { cache: "no-store" }));
+      if (resource === "products")
+        requests.push(
+          fetch("/api/catalog/products/admin/categories", {
+            cache: "no-store",
+          }),
+        );
       const responses = await Promise.all(requests);
       const body = await responses[0].json();
       if (!responses[0].ok)
         throw new Error(body.message ?? "তথ্য load করা যায়নি");
       setRows(body);
       if (responses[1]) {
-        const productBody = await responses[1].json();
+        const optionBody = await responses[1].json();
         if (!responses[1].ok)
-          throw new Error(productBody.message ?? "Product list load করা যায়নি");
-        setProducts(productBody);
+          throw new Error(optionBody.message ?? "Option list load করা যায়নি");
+        if (resource === "combos") setProducts(optionBody);
+        if (resource === "products") setCategories(optionBody);
       }
     } catch (reason) {
       setError(
@@ -180,6 +221,23 @@ export default function CatalogCrudPage({
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  useEffect(() => {
+    if (resource !== "products" || editing !== null) return;
+    const savedAt = new Date().toISOString();
+    const draft: StoredProductDraft = {
+      payload: payload as ProductPayload,
+      savedAt,
+    };
+    try {
+      window.localStorage.setItem(
+        PRODUCT_CREATE_DRAFT_KEY,
+        JSON.stringify(draft),
+      );
+    } catch {
+      // Browser storage unavailable/full হলে form ব্যবহার বন্ধ হবে না।
+    }
+  }, [editing, payload, resource]);
+
   const visibleRows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return rows;
@@ -193,9 +251,26 @@ export default function CatalogCrudPage({
   }, [query, rows]);
 
   function openCreate() {
-    setPayload(createTemplate(resource));
+    const draft = resource === "products" ? readProductDraft() : null;
+    setPayload(draft?.payload ?? createTemplate(resource));
+    setDraftSavedAt(draft?.savedAt ?? null);
     setEditing(null);
     setError("");
+  }
+
+  function clearCreateDraft() {
+    if (resource !== "products") return;
+    removeProductDraft();
+    setPayload(createTemplate("products"));
+    setDraftSavedAt(null);
+    setError("");
+  }
+
+  function changePayload(nextPayload: CatalogPayload) {
+    setPayload(nextPayload);
+    if (resource === "products" && editing === null) {
+      setDraftSavedAt(new Date().toISOString());
+    }
   }
 
   function openEdit(row: CatalogRow) {
@@ -237,6 +312,10 @@ export default function CatalogCrudPage({
             ? body.message.join(", ")
             : (body.message ?? "সংরক্ষণ করা যায়নি"),
         );
+      if (!editing && resource === "products") {
+        removeProductDraft();
+        setDraftSavedAt(null);
+      }
       setEditing(undefined);
       await load();
     } catch (reason) {
@@ -476,11 +555,16 @@ export default function CatalogCrudPage({
         editing={editing !== null && editing !== undefined}
         value={payload}
         products={products}
+        categories={categories}
         saving={saving}
         error={editing !== undefined ? error : ""}
-        onChange={setPayload}
+        onChange={changePayload}
         onClose={closeEditor}
         onSave={() => void save()}
+        draftSavedAt={
+          resource === "products" && editing === null ? draftSavedAt : null
+        }
+        onClearDraft={clearCreateDraft}
       />
     </div>
   );

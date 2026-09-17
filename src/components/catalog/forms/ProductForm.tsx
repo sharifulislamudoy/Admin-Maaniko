@@ -1,8 +1,14 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { Plus } from "lucide-react";
+import { useEffect } from "react";
+import { Check, ImageOff, Plus } from "lucide-react";
 import { slugify } from "@/lib/catalog-editor";
-import type { ContentText, ProductPayload } from "@/types/catalog";
+import type {
+  ContentText,
+  ProductCategoryOption,
+  ProductPayload,
+} from "@/types/catalog";
 import ImageUploader from "./ImageUploader";
 import {
   EmptyState,
@@ -24,13 +30,131 @@ function optionalNumber(value: string) {
   return value === "" ? null : Number(value);
 }
 
+const banglaTransliteration: Record<string, string> = {
+  অ: "a",
+  আ: "a",
+  ই: "i",
+  ঈ: "i",
+  উ: "u",
+  ঊ: "u",
+  ঋ: "ri",
+  এ: "e",
+  ঐ: "oi",
+  ও: "o",
+  ঔ: "ou",
+  ক: "k",
+  খ: "kh",
+  গ: "g",
+  ঘ: "gh",
+  ঙ: "ng",
+  চ: "ch",
+  ছ: "chh",
+  জ: "j",
+  ঝ: "jh",
+  ঞ: "n",
+  ট: "t",
+  ঠ: "th",
+  ড: "d",
+  ঢ: "dh",
+  ণ: "n",
+  ত: "t",
+  থ: "th",
+  দ: "d",
+  ধ: "dh",
+  ন: "n",
+  প: "p",
+  ফ: "f",
+  ব: "b",
+  ভ: "bh",
+  ম: "m",
+  য: "y",
+  র: "r",
+  ল: "l",
+  শ: "sh",
+  ষ: "sh",
+  স: "s",
+  হ: "h",
+  ড়: "r",
+  ঢ়: "rh",
+  য়: "y",
+  "া": "a",
+  "ি": "i",
+  "ী": "i",
+  "ু": "u",
+  "ূ": "u",
+  "ৃ": "ri",
+  "ে": "e",
+  "ৈ": "oi",
+  "ো": "o",
+  "ৌ": "ou",
+  "ং": "ng",
+  "ঃ": "h",
+  "ঁ": "n",
+  "্": "",
+  "০": "0",
+  "১": "1",
+  "২": "2",
+  "৩": "3",
+  "৪": "4",
+  "৫": "5",
+  "৬": "6",
+  "৭": "7",
+  "৮": "8",
+  "৯": "9",
+};
+
+function categorySlug(name: string) {
+  return slugify(
+    Array.from(name)
+      .map((character) => banglaTransliteration[character] ?? character)
+      .join(""),
+  );
+}
+
+function generateProductSku() {
+  const time = Date.now().toString(36).toUpperCase().slice(-6);
+  const random = Math.random().toString(36).toUpperCase().slice(2, 6);
+  return `MNK-${time}-${random}`;
+}
+
+function nextVariantSku(baseSku: string, variants: ProductPayload["variants"]) {
+  const used = new Set(variants.map((variant) => variant.sku));
+  let serial = 1;
+  let sku = "";
+  do {
+    sku = `${baseSku}-V${String(serial).padStart(2, "0")}`;
+    serial += 1;
+  } while (used.has(sku));
+  return sku;
+}
+
+function normalizeColorCode(color: string) {
+  const clean = color.replace(/\s/g, "").replace(/^#+/, "");
+  return clean ? `#${clean.slice(0, 6).toUpperCase()}` : "";
+}
+
+function validColorCode(color?: string) {
+  return /^#[0-9A-F]{6}$/i.test(color ?? "") ? color! : "#000000";
+}
+
 export default function ProductForm({
   value,
+  categories,
   onChange,
 }: {
   value: ProductPayload;
+  categories: ProductCategoryOption[];
   onChange: (value: ProductPayload) => void;
 }) {
+  const selectedCategory = categories.find(
+    (category) => category.slug === value.category.slug,
+  );
+
+  useEffect(() => {
+    if (value.sku) return;
+    onChange({ ...value, sku: generateProductSku() });
+  }, [onChange, value]);
+
   function updateName(name: ContentText) {
     onChange({ ...value, name });
   }
@@ -121,38 +245,71 @@ export default function ProductForm({
             <Field label="SKU / product code" required>
               <input
                 value={value.sku}
-                onChange={(event) =>
-                  onChange({ ...value, sku: event.target.value.toUpperCase() })
-                }
-                placeholder="MN-PIL-001"
-                className={inputClass}
+                readOnly
+                placeholder="Auto-generated"
+                className={`${inputClass} cursor-not-allowed bg-slate-100 font-mono font-bold text-slate-600`}
               />
             </Field>
           </TwoColumns>
-          <ContentField
-            label="Category name"
-            value={value.category.name}
-            onChange={(name) =>
-              onChange({ ...value, category: { ...value.category, name } })
-            }
+          <Field
+            label="Category"
+            hint="Existing category নির্বাচন করুন অথবা নতুন category তৈরি করুন।"
             required
-          />
-          <Field label="Category URL name / Slug" required>
-            <input
-              value={value.category.slug}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  category: {
-                    ...value.category,
-                    slug: slugify(event.target.value),
-                  },
-                })
-              }
-              placeholder="mother-care"
+          >
+            <select
+              value={selectedCategory?.slug ?? "__new__"}
+              onChange={(event) => {
+                if (event.target.value === "__new__") {
+                  onChange({ ...value, category: { name: "", slug: "" } });
+                  return;
+                }
+                const category = categories.find(
+                  (item) => item.slug === event.target.value,
+                );
+                if (category) {
+                  onChange({
+                    ...value,
+                    category: { name: category.name, slug: category.slug },
+                  });
+                }
+              }}
               className={inputClass}
-            />
+            >
+              <option value="__new__">+ নতুন category তৈরি করুন</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name} ({category.productCount} products)
+                </option>
+              ))}
+            </select>
           </Field>
+          {!selectedCategory && (
+            <div className="space-y-4 rounded-xl border border-sky-100 bg-sky-50/50 p-4">
+              <ContentField
+                label="New category name"
+                value={value.category.name}
+                onChange={(name) =>
+                  onChange({
+                    ...value,
+                    category: { name, slug: categorySlug(name) },
+                  })
+                }
+                required
+              />
+              <Field
+                label="Category URL name / Slug"
+                hint="নাম থেকে automatically তৈরি হবে।"
+                required
+              >
+                <input
+                  value={value.category.slug}
+                  readOnly
+                  placeholder="mother-care"
+                  className={`${inputClass} cursor-not-allowed bg-slate-100`}
+                />
+              </Field>
+            </div>
+          )}
           <ContentField
             label="Badge (optional)"
             value={value.badge}
@@ -169,7 +326,20 @@ export default function ProductForm({
         <ImageUploader
           folder="products"
           images={value.images}
-          onChange={(images) => onChange({ ...value, images })}
+          onChange={(images) => {
+            const availableUrls = new Set(images.map((image) => image.url));
+            onChange({
+              ...value,
+              images,
+              variants: value.variants.map((variant) => ({
+                ...variant,
+                imageUrl:
+                  variant.imageUrl && availableUrls.has(variant.imageUrl)
+                    ? variant.imageUrl
+                    : null,
+              })),
+            });
+          }}
         />
       </FormSection>
 
@@ -555,28 +725,63 @@ export default function ProductForm({
                       placeholders={"কালো"}
                     />
                     <Field label="Color code (colors only)">
-                      <input
-                        type="color"
-                        value={option.colorHex || "#000000"}
-                        onChange={(event) =>
-                          onChange({
-                            ...value,
-                            attributes: replaceAt(
-                              value.attributes,
-                              attributeIndex,
-                              {
-                                ...attribute,
-                                values: replaceAt(
-                                  attribute.values,
-                                  optionIndex,
-                                  { ...option, colorHex: event.target.value },
-                                ),
-                              },
-                            ),
-                          })
-                        }
-                        className="mt-3 h-10 w-20 rounded-lg border border-slate-200 bg-white p-1"
-                      />
+                      <div className="mt-3 flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={validColorCode(option.colorHex)}
+                          onChange={(event) =>
+                            onChange({
+                              ...value,
+                              attributes: replaceAt(
+                                value.attributes,
+                                attributeIndex,
+                                {
+                                  ...attribute,
+                                  values: replaceAt(
+                                    attribute.values,
+                                    optionIndex,
+                                    {
+                                      ...option,
+                                      colorHex:
+                                        event.target.value.toUpperCase(),
+                                    },
+                                  ),
+                                },
+                              ),
+                            })
+                          }
+                          className="h-11 w-16 shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                        />
+                        <input
+                          value={option.colorHex ?? ""}
+                          onChange={(event) =>
+                            onChange({
+                              ...value,
+                              attributes: replaceAt(
+                                value.attributes,
+                                attributeIndex,
+                                {
+                                  ...attribute,
+                                  values: replaceAt(
+                                    attribute.values,
+                                    optionIndex,
+                                    {
+                                      ...option,
+                                      colorHex: normalizeColorCode(
+                                        event.target.value,
+                                      ),
+                                    },
+                                  ),
+                                },
+                              ),
+                            })
+                          }
+                          placeholder="#FC5689"
+                          maxLength={7}
+                          spellCheck={false}
+                          className={`${inputClass} font-mono uppercase`}
+                        />
+                      </div>
                     </Field>
                   </div>
                 ))}
@@ -606,7 +811,7 @@ export default function ProductForm({
                     variants: [
                       ...value.variants,
                       {
-                        sku: `${value.sku}-VAR-${value.variants.length + 1}`,
+                        sku: nextVariantSku(value.sku, value.variants),
                         price: null,
                         compareAtPrice: null,
                         stock: 0,
@@ -698,16 +903,8 @@ export default function ProductForm({
                     <Field label="Variant SKU" required>
                       <input
                         value={variant.sku}
-                        onChange={(event) =>
-                          onChange({
-                            ...value,
-                            variants: replaceAt(value.variants, variantIndex, {
-                              ...variant,
-                              sku: event.target.value.toUpperCase(),
-                            }),
-                          })
-                        }
-                        className={inputClass}
+                        readOnly
+                        className={`${inputClass} cursor-not-allowed bg-slate-100 font-mono text-slate-600`}
                       />
                     </Field>
                     <Field label="Override price">
@@ -765,20 +962,85 @@ export default function ProductForm({
                       />
                     </Field>
                   </div>
-                  <Field label="Variant image URL (optional)">
-                    <input
-                      value={variant.imageUrl ?? ""}
-                      onChange={(event) =>
-                        onChange({
-                          ...value,
-                          variants: replaceAt(value.variants, variantIndex, {
-                            ...variant,
-                            imageUrl: event.target.value || null,
-                          }),
-                        })
-                      }
-                      className={inputClass}
-                    />
+                  <Field
+                    label="Variant image"
+                    hint="উপরে upload করা Product image থেকে একটি ছবি নির্বাচন করুন।"
+                  >
+                    {value.images.length === 0 ? (
+                      <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-xs font-semibold text-slate-500">
+                        আগে 2. Images section থেকে Product image upload করুন।
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onChange({
+                              ...value,
+                              variants: replaceAt(
+                                value.variants,
+                                variantIndex,
+                                { ...variant, imageUrl: null },
+                              ),
+                            })
+                          }
+                          className={`relative grid aspect-square place-items-center rounded-xl border-2 bg-slate-50 p-2 transition ${
+                            !variant.imageUrl
+                              ? "border-[#ef4277] ring-2 ring-[#ef4277]/10"
+                              : "border-slate-200 hover:border-slate-300"
+                          }`}
+                          aria-label="ভ্যারিয়েন্টের জন্য আলাদা ছবি ব্যবহার করব না"
+                          title="আলাদা ছবি নয়"
+                        >
+                          <ImageOff className="size-5 text-slate-400" />
+                          {!variant.imageUrl && (
+                            <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-[#ef4277] text-white">
+                              <Check className="size-3" strokeWidth={3} />
+                            </span>
+                          )}
+                        </button>
+
+                        {value.images.map((image, imageIndex) => {
+                          const selected = variant.imageUrl === image.url;
+                          return (
+                            <button
+                              key={`${image.url}-${imageIndex}`}
+                              type="button"
+                              onClick={() =>
+                                onChange({
+                                  ...value,
+                                  variants: replaceAt(
+                                    value.variants,
+                                    variantIndex,
+                                    { ...variant, imageUrl: image.url },
+                                  ),
+                                })
+                              }
+                              className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-white transition ${
+                                selected
+                                  ? "border-[#ef4277] ring-2 ring-[#ef4277]/10"
+                                  : "border-slate-200 hover:border-[#ef4277]/50"
+                              }`}
+                              aria-label={`Product image ${imageIndex + 1} নির্বাচন করুন`}
+                              title={
+                                image.alt || `Product image ${imageIndex + 1}`
+                              }
+                            >
+                              <img
+                                src={image.url}
+                                alt={image.alt || ""}
+                                className="size-full object-cover"
+                              />
+                              {selected && (
+                                <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-[#ef4277] text-white shadow-md">
+                                  <Check className="size-3" strokeWidth={3} />
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </Field>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
                     <input

@@ -2,12 +2,13 @@
 
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Save, X } from "lucide-react";
+import { CheckCircle2, Loader2, RotateCcw, Save, X } from "lucide-react";
 import type {
   BannerPayload,
   CatalogPayload,
   CatalogResource,
   ComboPayload,
+  ProductCategoryOption,
   ProductOption,
   ProductPayload,
 } from "@/types/catalog";
@@ -27,22 +28,28 @@ export default function CatalogEditorModal({
   editing,
   value,
   products,
+  categories,
   saving,
   error,
   onChange,
   onClose,
   onSave,
+  draftSavedAt,
+  onClearDraft,
 }: {
   open: boolean;
   resource: CatalogResource;
   editing: boolean;
   value: CatalogPayload;
   products: ProductOption[];
+  categories: ProductCategoryOption[];
   saving: boolean;
   error: string;
   onChange: (value: CatalogPayload) => void;
   onClose: () => void;
   onSave: () => void;
+  draftSavedAt?: string | null;
+  onClearDraft?: () => void;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -99,6 +106,16 @@ export default function CatalogEditorModal({
                 <p className="mt-1 text-xs text-slate-500">
                   JSON জানার প্রয়োজন নেই—প্রতিটি ঘর সহজভাবে পূরণ করুন।
                 </p>
+                {!editing && resource === "products" && draftSavedAt && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
+                    <CheckCircle2 className="size-3.5" />
+                    খসড়া এই browser-এ auto-save হয়েছে •{" "}
+                    {new Date(draftSavedAt).toLocaleTimeString("bn-BD", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -127,6 +144,7 @@ export default function CatalogEditorModal({
                 {resource === "products" && (
                   <ProductForm
                     value={value as ProductPayload}
+                    categories={categories}
                     onChange={onChange}
                   />
                 )}
@@ -140,28 +158,49 @@ export default function CatalogEditorModal({
               </div>
             </div>
 
-            <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={onClose}
-                className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
-                বাতিল
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={onSave}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ef4277] px-5 text-sm font-extrabold text-white shadow-lg shadow-[#ef4277]/20 transition hover:-translate-y-0.5 hover:bg-[#dc3267] disabled:translate-y-0 disabled:opacity-60"
-              >
-                {saving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Save className="size-4" />
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+              <div>
+                {!editing && resource === "products" && onClearDraft && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "সংরক্ষিত খসড়া মুছে একদম নতুন Product form শুরু করতে চান?",
+                        )
+                      )
+                        onClearDraft();
+                    }}
+                    className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-extrabold text-slate-500 transition hover:bg-slate-100 hover:text-rose-600 disabled:opacity-50"
+                  >
+                    <RotateCcw className="size-3.5" /> খসড়া মুছে নতুন শুরু
+                  </button>
                 )}
-                {saving ? "সংরক্ষণ হচ্ছে..." : "Database-এ সংরক্ষণ করুন"}
-              </button>
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={onClose}
+                  className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={onSave}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ef4277] px-5 text-sm font-extrabold text-white shadow-lg shadow-[#ef4277]/20 transition hover:-translate-y-0.5 hover:bg-[#dc3267] disabled:translate-y-0 disabled:opacity-60"
+                >
+                  {saving ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Save className="size-4" />
+                  )}
+                  {saving ? "সংরক্ষণ হচ্ছে..." : "Database-এ সংরক্ষণ করুন"}
+                </button>
+              </div>
             </footer>
           </motion.section>
         </motion.div>

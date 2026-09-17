@@ -95,11 +95,7 @@ export type ComboPayload = {
 
 export type BannerPayload = {
   key: string;
-  placement:
-    | "HOME_HERO"
-    | "SHOP_HERO"
-    | "GUIDE_HERO"
-    | "SOLUTION_GUIDE";
+  placement: "HOME_HERO" | "SHOP_HERO" | "GUIDE_HERO" | "SOLUTION_GUIDE";
   desktopImage: string;
   mobileImage: string;
   publicId?: string;
@@ -126,4 +122,11 @@ export type ProductOption = {
   sku: string;
   name: ContentText;
   images?: string[];
+};
+
+export type ProductCategoryOption = {
+  id: string;
+  slug: string;
+  name: ContentText;
+  productCount: number;
 };
