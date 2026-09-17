@@ -29,6 +29,7 @@ export const adminText = {
       combos: "Solution boxes",
       categories: "Categories",
       orders: "Orders",
+      notifications: "Push notifications",
       finance: "Revenue & Profit",
       customers: "Customers",
       aiAssistant: "AI Assistant",
