@@ -9,6 +9,7 @@ import {
   MessageSquareText,
   RefreshCw,
   Search,
+  Send,
   Sparkles,
   ThumbsDown,
   ThumbsUp,
@@ -50,6 +51,20 @@ type Analytics = {
     keywords: string[];
     updatedAt: string;
   }>;
+  support: {
+    pending: number;
+    replied: number;
+    closed: number;
+    queue: Array<{
+      id: string;
+      conversationId: string;
+      question: string;
+      pagePath: string | null;
+      failureReason: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+  };
   tokens: { prompt: number; completion: number; total: number };
   averageResponseMs: number;
   topics: Array<{
@@ -108,6 +123,8 @@ export default function AiAnalyticsManager() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [knowledgeDrafts, setKnowledgeDrafts] = useState<Record<string, string>>({});
   const [reviewingId, setReviewingId] = useState("");
+  const [supportDrafts, setSupportDrafts] = useState<Record<string, string>>({});
+  const [replyingId, setReplyingId] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -186,6 +203,28 @@ export default function AiAnalyticsManager() {
     }
   }
 
+  async function replyToCustomer(ticketId: string) {
+    const answer = supportDrafts[ticketId]?.trim();
+    if (!answer) return;
+    setReplyingId(ticketId);
+    setError("");
+    try {
+      const response = await fetch(`/api/ai-analytics/support/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.message || "Reply পাঠানো যায়নি");
+      setSupportDrafts((current) => ({ ...current, [ticketId]: "" }));
+      await load();
+    } catch (replyError) {
+      setError(replyError instanceof Error ? replyError.message : "Reply পাঠানো যায়নি");
+    } finally {
+      setReplyingId("");
+    }
+  }
+
   const cards = [
     { label: "Conversation", value: data?.conversations, icon: MessageSquareText, color: "bg-pink-50 text-[#ef4277]" },
     { label: "AI ব্যবহারকারী", value: data?.uniqueVisitors, icon: Users, color: "bg-sky-50 text-sky-600" },
@@ -232,6 +271,54 @@ export default function AiAnalyticsManager() {
             <p className="mt-1 text-xl font-black text-[#062a54]">{loading ? "…" : typeof value === "number" ? number.format(value) : value ?? "—"}</p>
           </article>
         ))}
+      </section>
+
+      <section className="rounded-3xl border border-amber-200 bg-amber-50/40 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-black text-[#062a54]">Human reply inbox</h2>
+            <p className="mt-1 text-xs text-slate-500">Groq-এর সব fallback ব্যর্থ হলে Telegram alert-এর customer প্রশ্ন এখানে আসে</p>
+          </div>
+          <div className="flex gap-2 text-[10px] font-black">
+            <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-800">Pending {number.format(data?.support.pending ?? 0)}</span>
+            <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-800">Replied {number.format(data?.support.replied ?? 0)}</span>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          {data?.support.queue.map((ticket) => (
+            <article key={ticket.id} className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400">
+                <span className="font-bold text-amber-700">#{ticket.id.slice(-8)}</span>
+                <span>{date.format(new Date(ticket.updatedAt))}</span>
+              </div>
+              <p className="mt-3 text-sm font-black leading-6 text-[#062a54]">{ticket.question}</p>
+              <p className="mt-1 text-[10px] text-slate-400">Page: {ticket.pagePath || "/"}</p>
+              <textarea
+                value={supportDrafts[ticket.id] ?? ""}
+                onChange={(event) => setSupportDrafts((current) => ({ ...current, [ticket.id]: event.target.value }))}
+                rows={4}
+                maxLength={4000}
+                placeholder="Customer-কে পাঠানোর উত্তর লিখুন…"
+                className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-700 outline-none focus:border-[#ef4277]/50"
+              />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <button type="button" onClick={() => void openConversation(ticket.conversationId)} className="text-[10px] font-black text-slate-500 hover:text-[#ef4277]">Conversation দেখুন</button>
+                <button
+                  type="button"
+                  disabled={replyingId === ticket.id || !(supportDrafts[ticket.id] ?? "").trim()}
+                  onClick={() => void replyToCustomer(ticket.id)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#062a54] px-4 py-2 text-[10px] font-black text-white hover:bg-[#0b3b6d] disabled:opacity-50"
+                >
+                  <Send className="size-3.5" />
+                  {replyingId === ticket.id ? "Sending…" : "Reply to customer"}
+                </button>
+              </div>
+            </article>
+          ))}
+          {!loading && !data?.support.queue.length && (
+            <div className="rounded-2xl border border-dashed border-amber-200 bg-white/70 p-8 text-center text-sm text-slate-400 xl:col-span-2">Pending human reply নেই।</div>
+          )}
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
