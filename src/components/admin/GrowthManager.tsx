@@ -3,6 +3,8 @@
 import {
   Activity,
   BellRing,
+  CheckCircle2,
+  Clock3,
   Gift,
   Play,
   RefreshCcw,
@@ -74,6 +76,8 @@ export default function GrowthManager() {
   const metrics = useMemo(() => {
     const rewarded =
       data?.referrals.find((item) => item.status === "REWARDED")?._count ?? 0;
+    const pendingReferrals =
+      data?.referrals.find((item) => item.status === "PENDING")?._count ?? 0;
     const pendingReminders =
       data?.reminders
         .filter((item) => item.status === "PENDING")
@@ -86,7 +90,7 @@ export default function GrowthManager() {
             ["PRICE_DROP", "BACK_IN_STOCK"].includes(item.type),
         )
         .reduce((sum, item) => sum + item._count, 0) ?? 0;
-    return { rewarded, pendingReminders, activeAlerts };
+    return { rewarded, pendingReferrals, pendingReminders, activeAlerts };
   }, [data]);
 
   async function processNow() {
@@ -127,13 +131,13 @@ export default function GrowthManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <div className="min-w-0 space-y-4 overflow-x-hidden sm:space-y-6">
+      <header className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-wider text-pink-500">
             Customer lifecycle
           </p>
-          <h1 className="mt-1 text-2xl font-black text-slate-900">
+          <h1 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">
             Growth & Retention
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -141,10 +145,10 @@ export default function GrowthManager() {
             automation-এর live summary.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_40px] gap-2 sm:flex sm:justify-start">
           <button
             onClick={() => void processNow()}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-pink-500 px-4 text-xs font-black text-white"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl bg-pink-500 px-3 text-xs font-black text-white sm:px-4"
           >
             <Play className="size-4" />
             Run automation
@@ -163,7 +167,7 @@ export default function GrowthManager() {
         </p>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
         <Metric
           icon={Gift}
           label="Points transactions"
@@ -177,10 +181,16 @@ export default function GrowthManager() {
           tone="sky"
         />
         <Metric
+          icon={Clock3}
+          label="Pending referrals"
+          value={metrics.pendingReferrals}
+          tone="amber"
+        />
+        <Metric
           icon={BellRing}
           label="Pending reminders"
           value={metrics.pendingReminders}
-          tone="amber"
+          tone="violet"
         />
         <Metric
           icon={Activity}
@@ -190,12 +200,81 @@ export default function GrowthManager() {
         />
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        <section className="rounded-2xl bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)]">
+      <section className="grid gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 sm:grid-cols-3 sm:p-5">
+        <div className="sm:col-span-3">
+          <h2 className="text-sm font-black text-slate-900">
+            Referral success flow
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-slate-600">
+            Code apply করলেই referral successful হয় না। Referred customer-এর
+            প্রথম order Delivered হলে automation দুজনকে points দিয়ে status
+            REWARDED করে।
+          </p>
+        </div>
+        <FlowStep
+          icon={UsersRound}
+          title="Code applied"
+          text="Status: PENDING"
+        />
+        <FlowStep
+          icon={BellRing}
+          title="First order delivered"
+          text="Admin order status Delivered করবেন"
+        />
+        <FlowStep
+          icon={CheckCircle2}
+          title="Reward completed"
+          text="দুজনের wallet-এ referral points যোগ হবে"
+        />
+      </section>
+
+      <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="min-w-0 rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-5">
           <h2 className="text-lg font-black text-slate-900">
             Recent points history
           </h2>
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 space-y-3 md:hidden">
+            {data?.recentTransactions.map((item) => (
+              <article
+                key={item.id}
+                className="rounded-xl border border-slate-100 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-slate-900">
+                      {item.customer.name ?? "—"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {item.customer.phone || "No phone"}
+                    </p>
+                  </div>
+                  <strong
+                    className={
+                      item.points >= 0 ? "text-emerald-600" : "text-red-500"
+                    }
+                  >
+                    {item.points >= 0 ? "+" : ""}
+                    {item.points}
+                  </strong>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-600">
+                  {item.description}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+                  <span>{item.order?.orderNumber ?? "No order"}</span>
+                  <span>
+                    {new Date(item.createdAt).toLocaleString("en-GB")}
+                  </span>
+                </div>
+              </article>
+            ))}
+            {!data?.recentTransactions.length ? (
+              <p className="py-8 text-center text-sm text-slate-400">
+                No point transactions yet.
+              </p>
+            ) : null}
+          </div>
+          <div className="mt-4 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="text-xs uppercase text-slate-400">
                 <tr>
@@ -239,7 +318,7 @@ export default function GrowthManager() {
 
         <form
           onSubmit={adjust}
-          className="rounded-2xl bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)]"
+          className="min-w-0 rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-5"
         >
           <h2 className="text-lg font-black text-slate-900">
             Manual point adjustment
@@ -306,23 +385,48 @@ function Metric({
   icon: typeof Gift;
   label: string;
   value: number;
-  tone: "pink" | "sky" | "amber" | "emerald";
+  tone: "pink" | "sky" | "amber" | "emerald" | "violet";
 }) {
   const colors = {
     pink: "bg-pink-50 text-pink-600",
     sky: "bg-sky-50 text-sky-600",
     amber: "bg-amber-50 text-amber-600",
     emerald: "bg-emerald-50 text-emerald-600",
+    violet: "bg-violet-50 text-violet-600",
   };
   return (
-    <article className="rounded-2xl bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)]">
+    <article className="min-w-0 rounded-2xl bg-white p-3.5 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-5">
       <span
         className={`grid size-10 place-items-center rounded-xl ${colors[tone]}`}
       >
         <Icon className="size-5" />
       </span>
-      <p className="mt-4 text-2xl font-black text-slate-900">{value}</p>
+      <p className="mt-3 text-xl font-black text-slate-900 sm:mt-4 sm:text-2xl">
+        {value}
+      </p>
       <p className="mt-1 text-xs font-bold text-slate-500">{label}</p>
+    </article>
+  );
+}
+
+function FlowStep({
+  icon: Icon,
+  title,
+  text,
+}: {
+  icon: typeof Gift;
+  title: string;
+  text: string;
+}) {
+  return (
+    <article className="flex min-w-0 items-start gap-3 rounded-xl bg-white p-3">
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700">
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-black text-slate-900">{title}</p>
+        <p className="mt-1 text-[11px] leading-4 text-slate-500">{text}</p>
+      </div>
     </article>
   );
 }
