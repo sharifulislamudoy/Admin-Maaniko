@@ -83,7 +83,14 @@ function removeProductDraft() {
 }
 
 function rowName(row: CatalogRow) {
+  if (row.__variantLabel) {
+    return `${String(row.name ?? row.title ?? row.key ?? row.slug ?? row.id)} — ${String(row.__variantLabel)}`;
+  }
   return String(row.name ?? row.title ?? row.key ?? row.slug ?? row.id);
+}
+
+function sourceRow(row: CatalogRow) {
+  return (row.__sourceRow as CatalogRow | undefined) ?? row;
 }
 
 function rowImage(row: CatalogRow) {
@@ -246,16 +253,41 @@ export default function CatalogCrudPage({
   }, [editing, payload, resource]);
 
   const visibleRows = useMemo(() => {
+    const displayRows =
+      resource === "products"
+        ? rows.flatMap((row) => {
+            const variants = Array.isArray(row.variants)
+              ? (row.variants as Array<Record<string, unknown>>)
+              : [];
+            if (!variants.length) return [row];
+            return variants.map((variant) => ({
+              ...row,
+              __sourceRow: row,
+              __rowKey: `${row.id}:${String(variant.id ?? variant.sku)}`,
+              __variantLabel:
+                (Array.isArray(variant.selections)
+                  ? (variant.selections as Array<Record<string, unknown>>)
+                      .map((item) => `${String(item.attribute)}: ${String(item.value)}`)
+                      .join(", ")
+                  : "") || "Variant",
+              sku: variant.sku,
+              imageUrl: variant.imageUrl || rowImage(row),
+              stock: variant.stock,
+              onHandStock: variant.onHandStock,
+              reservedStock: variant.reservedStock,
+            }));
+          })
+        : rows;
     const needle = query.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((row) =>
+    if (!needle) return displayRows;
+    return displayRows.filter((row) =>
       [rowName(row), row.sku, row.key, row.slug, row.status].some((item) =>
         String(item ?? "")
           .toLowerCase()
           .includes(needle),
       ),
     );
-  }, [query, rows]);
+  }, [query, resource, rows]);
 
   function openCreate() {
     const draft = resource === "products" ? readProductDraft() : null;
@@ -463,8 +495,12 @@ export default function CatalogCrudPage({
               <tbody className="divide-y divide-slate-100">
                 {visibleRows.map((row) => {
                   const image = rowImage(row);
+                  const original = sourceRow(row);
                   return (
-                    <tr key={row.id} className="transition hover:bg-rose-50/30">
+                    <tr
+                      key={String(row.__rowKey ?? row.id)}
+                      className="transition hover:bg-rose-50/30"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {image ? (
@@ -492,32 +528,32 @@ export default function CatalogCrudPage({
                             <button
                               type="button"
                               role="switch"
-                              aria-checked={Boolean(row.isPublished)}
-                              aria-label={`${rowName(row)} ${row.isPublished ? "বন্ধ" : "চালু"} করুন`}
-                              disabled={updatingStatusId === row.id}
-                              onClick={() => void toggleBannerStatus(row)}
+                              aria-checked={Boolean(original.isPublished)}
+                              aria-label={`${rowName(original)} ${original.isPublished ? "বন্ধ" : "চালু"} করুন`}
+                              disabled={updatingStatusId === original.id}
+                              onClick={() => void toggleBannerStatus(original)}
                               className={`relative h-7 w-12 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ef4277]/20 disabled:cursor-wait disabled:opacity-60 ${
-                                row.isPublished
+                                original.isPublished
                                   ? "bg-emerald-500"
                                   : "bg-slate-300"
                               }`}
                             >
                               <span
                                 className={`absolute top-1 grid size-5 place-items-center rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                                  row.isPublished
+                                  original.isPublished
                                     ? "translate-x-6"
                                     : "translate-x-1"
                                 }`}
                               >
-                                {updatingStatusId === row.id && (
+                                {updatingStatusId === original.id && (
                                   <Loader2 className="size-3 animate-spin text-slate-500" />
                                 )}
                               </span>
                             </button>
                             <span
-                              className={`text-xs font-extrabold ${row.isPublished ? "text-emerald-700" : "text-slate-500"}`}
+                              className={`text-xs font-extrabold ${original.isPublished ? "text-emerald-700" : "text-slate-500"}`}
                             >
-                              {row.isPublished ? "চালু" : "বন্ধ"}
+                              {original.isPublished ? "চালু" : "বন্ধ"}
                             </span>
                           </div>
                         ) : (
@@ -535,9 +571,9 @@ export default function CatalogCrudPage({
                             <button
                               onClick={() =>
                                 setHistoryProduct({
-                                  id: row.id,
+                                  id: original.id,
                                   name: rowName(row),
-                                  sku: String(row.sku ?? ""),
+                                  sku: String(row.sku ?? original.sku ?? ""),
                                 })
                               }
                               className="grid size-9 place-items-center rounded-xl bg-amber-50 text-amber-700 transition hover:bg-amber-100"
@@ -548,14 +584,14 @@ export default function CatalogCrudPage({
                             </button>
                           ) : null}
                           <button
-                            onClick={() => openEdit(row)}
+                            onClick={() => openEdit(original)}
                             className="grid size-9 place-items-center rounded-xl bg-sky-50 text-sky-700 transition hover:bg-sky-100"
                             aria-label="সম্পাদনা করুন"
                           >
                             <Pencil className="size-4" />
                           </button>
                           <button
-                            onClick={() => void remove(row)}
+                            onClick={() => void remove(original)}
                             className="grid size-9 place-items-center rounded-xl bg-rose-50 text-rose-700 transition hover:bg-rose-100"
                             aria-label="মুছে দিন"
                           >

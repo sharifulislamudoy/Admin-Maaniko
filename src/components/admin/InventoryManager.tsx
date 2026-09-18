@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type Variant = {
   id: string;
   sku: string;
+  image: string | null;
   label: string;
   stock: number;
   reservedStock: number;
@@ -151,6 +152,9 @@ export default function InventoryManager() {
               On-hand, reserved, available, sold stock এবং variant cost এক জায়গা
               থেকে নিয়ন্ত্রণ করুন।
             </p>
+            <p className="mt-1 text-xs font-semibold text-amber-600">
+              Pending থেকে Shipped পর্যন্ত stock Reserved থাকবে; Delivered হলে On-hand থেকে কমবে।
+            </p>
           </div>
           <label className="relative w-full lg:max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -211,10 +215,11 @@ export default function InventoryManager() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {products
-                .flatMap((product): Target[] => [
-                  { product },
-                  ...product.variants.map((variant) => ({ product, variant })),
-                ])
+                .flatMap((product): Target[] =>
+                  product.variants.length
+                    ? product.variants.map((variant) => ({ product, variant }))
+                    : [{ product }],
+                )
                 .map(({ product, variant }) => {
                   const row = variant ?? product;
                   return (
@@ -224,9 +229,9 @@ export default function InventoryManager() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          {!variant && product.image ? (
+                          {(variant?.image ?? product.image) ? (
                             <img
-                              src={product.image}
+                              src={variant?.image ?? product.image ?? ""}
                               alt=""
                               className="size-10 rounded-lg object-cover"
                             />
@@ -238,7 +243,7 @@ export default function InventoryManager() {
                           <div>
                             <p className="font-extrabold text-slate-800">
                               {variant
-                                ? variant.label || "Variant"
+                                ? `${product.name} — ${variant.label || "Variant"}`
                                 : product.name}
                             </p>
                             <p className="mt-0.5 font-mono text-[10px] text-slate-400">
@@ -272,15 +277,13 @@ export default function InventoryManager() {
                             <PackagePlus className="size-3" />
                             Adjust
                           </button>
-                          {!variant ? (
-                            <button
-                              onClick={() => setHistoryProduct(product)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] font-bold text-slate-600"
-                            >
-                              <History className="size-3" />
-                              History
-                            </button>
-                          ) : null}
+                          <button
+                            onClick={() => setHistoryProduct(product)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 text-[10px] font-bold text-slate-600"
+                          >
+                            <History className="size-3" />
+                            History
+                          </button>
                         </div>
                       </td>
                     </tr>

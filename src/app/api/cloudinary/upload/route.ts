@@ -5,7 +5,13 @@ import { getToken } from "next-auth/jwt";
 export const runtime = "nodejs";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_FOLDERS = new Set(["products", "combos", "banners", "guides"]);
+const ALLOWED_FOLDERS = new Set([
+  "products",
+  "combos",
+  "banners",
+  "guides",
+  "notifications",
+]);
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/png",

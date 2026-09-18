@@ -53,7 +53,7 @@ export default function ImageUploader({
 }: {
   images: CloudinaryImage[];
   onChange: (images: CloudinaryImage[]) => void;
-  folder: "products" | "combos" | "banners" | "guides";
+  folder: "products" | "combos" | "banners" | "guides" | "notifications";
   multiple?: boolean;
   label?: string;
   help?: string;
