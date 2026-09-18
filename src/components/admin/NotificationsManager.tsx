@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { BellRing, CheckCircle2, FilePlus2, Loader2, RefreshCw, Send, Smartphone, Trash2, Users } from "lucide-react";
+import { BellRing, BookmarkPlus, CheckCircle2, Loader2, RefreshCw, Send, Smartphone, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import ImageUploader from "@/components/catalog/forms/ImageUploader";
 import type { CloudinaryImage } from "@/types/catalog";
@@ -21,7 +21,7 @@ type Campaign = {
   sentAt: string | null;
   createdAt: string;
 };
-type Overview = { activeDevices: number; offerDevices: number; campaigns: Campaign[] };
+type Overview = { activeDevices: number; offerDevices: number; templates?: Campaign[]; campaigns: Campaign[] };
 const initialForm = { title: "", body: "", link: "/shop", imageUrl: "" };
 
 export default function NotificationsManager() {
@@ -56,19 +56,19 @@ export default function NotificationsManager() {
     return { title: form.title.trim(), body: form.body.trim(), link: form.link.trim() || "/", imageUrl: form.imageUrl || undefined };
   }
 
-  async function submit(mode: "send" | "draft") {
+  async function submit(mode: "send" | "save") {
     setAction(mode);
     setError("");
     setSuccess("");
     try {
-      const response = await fetch(mode === "send" ? "/api/commerce/notifications/offers" : "/api/commerce/notifications/drafts", {
+      const response = await fetch(mode === "send" ? "/api/commerce/notifications/offers" : "/api/commerce/notifications/templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload()),
       });
       const result = (await response.json()) as { message?: string; sentCount?: number; failureCount?: number };
       if (!response.ok) throw new Error(result.message ?? "Notification save failed");
-      setSuccess(mode === "draft" ? "Notification draft হিসেবে সংরক্ষণ হয়েছে।" : `${result.sentCount ?? 0}টি device-এ notification পাঠানো হয়েছে${result.failureCount ? `, ${result.failureCount}টি failed` : ""}।`);
+      setSuccess(mode === "save" ? "Notification saved হয়েছে। এখন এটি যতবার প্রয়োজন পাঠাতে পারবেন।" : `${result.sentCount ?? 0}টি device-এ notification পাঠানো হয়েছে${result.failureCount ? `, ${result.failureCount}টি failed` : ""}।`);
       setForm(initialForm);
       await load();
     } catch (reason) {
@@ -78,12 +78,12 @@ export default function NotificationsManager() {
     }
   }
 
-  async function sendDraft(campaign: Campaign) {
+  async function sendSaved(campaign: Campaign) {
     setAction(campaign.id);
     setError("");
     setSuccess("");
     try {
-      const response = await fetch(`/api/commerce/notifications/campaigns/${campaign.id}/send`, { method: "POST" });
+      const response = await fetch(`/api/commerce/notifications/templates/${campaign.id}/send`, { method: "POST" });
       const body = (await response.json()) as { message?: string; sentCount?: number; failureCount?: number };
       if (!response.ok) throw new Error(body.message ?? "Send failed");
       setSuccess(`${body.sentCount ?? 0}টি device-এ notification পাঠানো হয়েছে${body.failureCount ? `, ${body.failureCount}টি failed` : ""}।`);
@@ -95,12 +95,12 @@ export default function NotificationsManager() {
     }
   }
 
-  async function deleteDraft(campaign: Campaign) {
-    if (!window.confirm(`“${campaign.title}” draft delete করতে চান?`)) return;
+  async function deleteSaved(campaign: Campaign) {
+    if (!window.confirm(`“${campaign.title}” saved notification delete করতে চান?`)) return;
     setAction(campaign.id);
     setError("");
     try {
-      const response = await fetch(`/api/commerce/notifications/drafts/${campaign.id}`, { method: "DELETE" });
+      const response = await fetch(`/api/commerce/notifications/templates/${campaign.id}`, { method: "DELETE" });
       const body = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) throw new Error(body.message ?? "Delete failed");
       await load();
@@ -111,7 +111,7 @@ export default function NotificationsManager() {
     }
   }
 
-  const drafts = overview?.campaigns.filter((item) => item.status === "DRAFT") ?? [];
+  const saved = overview?.templates ?? overview?.campaigns.filter((item) => item.status === "DRAFT") ?? [];
   const sent = overview?.campaigns.filter((item) => item.status !== "DRAFT") ?? [];
   const disabled = Boolean(action) || !form.title.trim() || !form.body.trim();
 
@@ -121,7 +121,7 @@ export default function NotificationsManager() {
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#ef4277]">Customer engagement</p>
           <h1 className="mt-1 text-2xl font-black text-[#062a54] sm:text-3xl">Push notifications</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">Offer এখনই পাঠান অথবা draft রাখুন। নতুন banner প্রথমবার publish হলে title, description ও image সহ automatic notification যাবে।</p>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">Offer এখনই পাঠান অথবা reusable notification হিসেবে save করুন। Saved notification যতবার প্রয়োজন এক click-এ পাঠানো যাবে।</p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 disabled:opacity-50"><RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />Refresh</button>
       </header>
@@ -147,13 +147,14 @@ export default function NotificationsManager() {
           </div>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
             <button type="button" disabled={disabled} onClick={() => void submit("send")} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#ef4277] px-5 text-sm font-extrabold text-white disabled:opacity-50">{action === "send" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}Send now</button>
-            <button type="button" disabled={disabled} onClick={() => void submit("draft")} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 disabled:opacity-50">{action === "draft" ? <Loader2 className="size-4 animate-spin" /> : <FilePlus2 className="size-4" />}Save draft</button>
+            <button type="button" disabled={disabled} onClick={() => void submit("save")} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-sm font-extrabold text-slate-700 disabled:opacity-50">{action === "save" ? <Loader2 className="size-4 animate-spin" /> : <BookmarkPlus className="size-4" />}Save for reuse</button>
           </div>
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="text-lg font-extrabold text-[#062a54]">Saved drafts</h2>
-          <div className="mt-4 space-y-3">{drafts.length ? drafts.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} busy={action === campaign.id} onSend={() => void sendDraft(campaign)} onDelete={() => void deleteDraft(campaign)} />) : <Empty text="কোনো draft notification নেই।" />}</div>
+          <h2 className="text-lg font-extrabold text-[#062a54]">Saved notifications</h2>
+          <p className="mt-1 text-xs text-slate-500">Send করার পরও এগুলো এখানে থাকবে এবং আবার পাঠানো যাবে।</p>
+          <div className="mt-4 space-y-3">{saved.length ? saved.map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} busy={action === campaign.id} saved onSend={() => void sendSaved(campaign)} onDelete={() => void deleteSaved(campaign)} />) : <Empty text="কোনো saved notification নেই।" />}</div>
         </section>
       </div>
 
@@ -165,8 +166,8 @@ export default function NotificationsManager() {
   );
 }
 
-function CampaignCard({ campaign, busy, onSend, onDelete }: { campaign: Campaign; busy: boolean; onSend?: () => void; onDelete?: () => void }) {
-  return <article className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">{campaign.imageUrl ? <img src={campaign.imageUrl} alt="" className="aspect-[16/7] w-full object-cover" /> : null}<div className="p-3.5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-extrabold text-slate-800">{campaign.title}</h3><p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{campaign.body}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold ${statusColor(campaign.status)}`}>{campaign.status}</span></div><div className="mt-3 flex items-center justify-between border-t border-slate-200/70 pt-2 text-[11px] text-slate-400"><span>{new Date(campaign.createdAt).toLocaleString()}</span><span>{campaign.sentCount}/{campaign.recipientCount} sent</span></div>{onSend ? <div className="mt-3 flex gap-2"><button type="button" disabled={busy} onClick={onSend} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#ef4277] px-3 text-xs font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}Send</button><button type="button" disabled={busy} onClick={onDelete} className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 disabled:opacity-50"><Trash2 className="size-3.5" /></button></div> : null}</div></article>;
+function CampaignCard({ campaign, busy, saved = false, onSend, onDelete }: { campaign: Campaign; busy: boolean; saved?: boolean; onSend?: () => void; onDelete?: () => void }) {
+  return <article className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/70">{campaign.imageUrl ? <img src={campaign.imageUrl} alt="" className="aspect-[16/7] w-full object-cover" /> : null}<div className="p-3.5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-extrabold text-slate-800">{campaign.title}</h3><p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{campaign.body}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold ${saved ? "bg-violet-100 text-violet-700" : statusColor(campaign.status)}`}>{saved ? "SAVED" : campaign.status}</span></div><div className="mt-3 flex items-center justify-between border-t border-slate-200/70 pt-2 text-[11px] text-slate-400"><span>{new Date(campaign.createdAt).toLocaleString()}</span>{saved ? <span>Reusable</span> : <span>{campaign.sentCount}/{campaign.recipientCount} sent</span>}</div>{onSend ? <div className="mt-3 flex gap-2"><button type="button" disabled={busy} onClick={onSend} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#ef4277] px-3 text-xs font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}Send again</button><button type="button" disabled={busy} onClick={onDelete} aria-label="Saved notification delete করুন" className="grid size-9 place-items-center rounded-lg border border-rose-200 text-rose-600 disabled:opacity-50"><Trash2 className="size-3.5" /></button></div> : null}</div></article>;
 }
 
 function statusColor(status: CampaignStatus) {
