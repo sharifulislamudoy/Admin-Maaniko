@@ -16,6 +16,7 @@ import {
   Warehouse,
   ChartNoAxesCombined,
   BellRing,
+  MessageSquareText,
 } from "lucide-react";
 
 export const ADMIN_NAV_ITEMS = [
@@ -35,6 +36,11 @@ export const ADMIN_NAV_ITEMS = [
     icon: Shapes,
   },
   { href: "/orders", labelKey: "admin.navigation.orders", icon: ClipboardList },
+  {
+    href: "/reviews",
+    labelKey: "admin.navigation.reviews",
+    icon: MessageSquareText,
+  },
   {
     href: "/notifications",
     labelKey: "admin.navigation.notifications",
