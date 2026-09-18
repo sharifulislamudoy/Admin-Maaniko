@@ -32,6 +32,7 @@ export const adminText = {
       reviews: "Customer reviews",
       notifications: "Push notifications",
       finance: "Revenue & Profit",
+      growth: "Growth & Retention",
       customers: "Customers",
       aiAssistant: "AI Assistant",
       coupons: "Coupons",

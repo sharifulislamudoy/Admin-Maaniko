@@ -42,6 +42,7 @@ export type ProductPayload = {
   stock: number;
   purchaseCost: number;
   packagingCost: number;
+  reorderAfterDays: number | null;
   rating: number;
   reviewCount: number;
   status: CatalogStatus;

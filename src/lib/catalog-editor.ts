@@ -24,6 +24,7 @@ const productTemplate = (): ProductPayload => ({
   stock: 0,
   purchaseCost: 0,
   packagingCost: 0,
+  reorderAfterDays: 30,
   rating: 5,
   reviewCount: 0,
   status: "DRAFT",

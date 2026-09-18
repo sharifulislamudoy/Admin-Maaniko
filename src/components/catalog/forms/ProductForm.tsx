@@ -417,6 +417,23 @@ export default function ProductForm({
                 className={inputClass}
               />
             </Field>
+            <Field
+              label="Reorder reminder (days)"
+              hint="Delivery-এর কত দিন পর customer-কে আবার অর্ডারের reminder পাঠাবে"
+            >
+              <input
+                type="number"
+                min={1}
+                value={value.reorderAfterDays ?? 30}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    reorderAfterDays: Math.max(1, Number(event.target.value)),
+                  })
+                }
+                className={inputClass}
+              />
+            </Field>
             <Field label="Rating">
               <input
                 type="number"

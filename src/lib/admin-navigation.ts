@@ -17,6 +17,7 @@ import {
   ChartNoAxesCombined,
   BellRing,
   MessageSquareText,
+  TrendingUp,
 } from "lucide-react";
 
 export const ADMIN_NAV_ITEMS = [
@@ -50,6 +51,11 @@ export const ADMIN_NAV_ITEMS = [
     href: "/finance",
     labelKey: "admin.navigation.finance",
     icon: ChartNoAxesCombined,
+  },
+  {
+    href: "/growth",
+    labelKey: "admin.navigation.growth",
+    icon: TrendingUp,
   },
   { href: "/customers", labelKey: "admin.navigation.customers", icon: Users },
   {
