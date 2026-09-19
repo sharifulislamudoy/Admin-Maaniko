@@ -25,6 +25,17 @@ type GrowthData = {
     customer: { id: string; name?: string | null; phone?: string | null };
     order?: { orderNumber: string } | null;
   }>;
+  recentAlerts: Array<{
+    id: string;
+    type: "PRICE_DROP" | "BACK_IN_STOCK";
+    isActive: boolean;
+    notifiedAt?: string | null;
+    createdAt: string;
+    customer?: { id: string; name?: string | null; phone?: string | null } | null;
+    product?: { id: string; name: string; sku: string } | null;
+    variant?: { id: string; sku: string } | null;
+    combo?: { id: string; name: string; sku: string } | null;
+  }>;
 };
 
 type CustomerOption = {
@@ -200,6 +211,50 @@ export default function GrowthManager() {
         />
       </section>
 
+      <section className="min-w-0 rounded-2xl bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Product alert customers</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              কোন customer কোন product-এর stock বা price update-এর অপেক্ষায় আছেন।
+            </p>
+          </div>
+          <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-black text-pink-600">
+            {(data?.recentAlerts ?? []).filter((item) => item.isActive).length} active
+          </span>
+        </div>
+        <div className="mt-4 grid gap-2 md:hidden">
+          {(data?.recentAlerts ?? []).map((item) => (
+            <AlertCard key={item.id} item={item} />
+          ))}
+        </div>
+        <div className="mt-4 hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[760px] text-left text-xs">
+            <thead className="uppercase text-slate-400">
+              <tr>
+                <th className="pb-3">Customer</th>
+                <th className="pb-3">Product / variant</th>
+                <th className="pb-3">Alert</th>
+                <th className="pb-3">Status</th>
+                <th className="pb-3">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.recentAlerts ?? []).map((item) => (
+                <tr key={item.id} className="border-t border-slate-100">
+                  <td className="py-3"><p className="font-black text-slate-800">{item.customer?.name ?? "—"}</p><p className="text-slate-400">{item.customer?.phone ?? "—"}</p></td>
+                  <td className="py-3"><p className="font-bold text-slate-700">{item.product?.name ?? item.combo?.name ?? "Deleted product"}</p><p className="text-slate-400">{item.variant?.sku ?? item.product?.sku ?? item.combo?.sku ?? "—"}</p></td>
+                  <td className="py-3 font-bold">{item.type === "PRICE_DROP" ? "Price drop" : "Back in stock"}</td>
+                  <td className="py-3"><span className={`rounded-full px-2 py-1 font-black ${item.isActive ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{item.isActive ? "WAITING" : "NOTIFIED"}</span></td>
+                  <td className="py-3 text-slate-500">{new Date(item.createdAt).toLocaleString("en-GB")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!data?.recentAlerts.length ? <p className="py-8 text-center text-sm text-slate-400">No product alerts yet.</p> : null}
+      </section>
+
       <section className="grid gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 sm:grid-cols-3 sm:p-5">
         <div className="sm:col-span-3">
           <h2 className="text-sm font-black text-slate-900">
@@ -373,6 +428,19 @@ export default function GrowthManager() {
         </form>
       </div>
     </div>
+  );
+}
+
+function AlertCard({ item }: { item: GrowthData["recentAlerts"][number] }) {
+  return (
+    <article className="rounded-xl border border-slate-100 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{item.product?.name ?? item.combo?.name ?? "Deleted product"}</p><p className="mt-0.5 text-xs text-slate-400">{item.variant?.sku ?? item.product?.sku ?? item.combo?.sku ?? "—"}</p></div>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${item.isActive ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{item.isActive ? "WAITING" : "NOTIFIED"}</span>
+      </div>
+      <p className="mt-3 text-xs font-bold text-slate-700">{item.customer?.name ?? "—"} • {item.customer?.phone ?? "—"}</p>
+      <p className="mt-1 text-xs text-slate-500">{item.type === "PRICE_DROP" ? "Price drop" : "Back in stock"}</p>
+    </article>
   );
 }
 
